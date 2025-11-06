@@ -247,7 +247,7 @@ export default function ProductsPage() {
             <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center text-lg">
-                  <Package className="w-5 h-5 mr-2 text-primary" />
+                  <div className="w-5 h-5 mr-2 bg-linear-to-br from-blue-500 to-purple-500 rounded-lg"></div>
                   Product Catalog
                 </CardTitle>
                 <CardDescription className="text-sm">
@@ -363,7 +363,7 @@ export default function ProductsPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 lg:p-6 bg-linear-to-r from-primary/5 to-primary/10 rounded-lg gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-6">
                       <div className="flex items-center">
-                        <DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-green-600 mr-2" />
+                        <div className="w-6 h-6 mr-2 bg-linear-to-br from-green-500 to-emerald-500 rounded-full"></div>
                         <div>
                           <div className="text-2xl lg:text-3xl font-bold text-green-600">
                             ${selectedProduct.price}
@@ -374,7 +374,7 @@ export default function ProductsPage() {
                         </div>
                       </div>
                       <div className="flex items-center">
-                        <Star className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-500 mr-2" />
+                        <div className="w-5 h-5 mr-2 bg-linear-to-br from-yellow-400 to-orange-500 rounded-full"></div>
                         <div>
                           <div className="text-lg lg:text-xl font-semibold">
                             {selectedProduct.rating}
@@ -432,7 +432,7 @@ export default function ProductsPage() {
                               variant="secondary"
                               className="px-3 py-1"
                             >
-                              <Tag className="w-3 h-3 mr-1" />
+                              <div className="w-2 h-2 mr-1 bg-primary rounded-full"></div>
                               {tag}
                             </Badge>
                           ))}
@@ -450,7 +450,7 @@ export default function ProductsPage() {
                               key={index}
                               className="flex items-start p-3 bg-muted/30 rounded-lg"
                             >
-                              <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 text-green-500 mr-2 lg:mr-3 mt-0.5 shrink-0" />
+                              <div className="w-5 h-5 mr-3 mt-0.5 shrink-0 bg-linear-to-br from-green-500 to-emerald-500 rounded-full"></div>
                               <span className="text-sm leading-relaxed">
                                 {feature}
                               </span>
@@ -490,7 +490,7 @@ export default function ProductsPage() {
                             key={index}
                             className="aspect-square bg-muted/30 rounded-lg flex items-center justify-center"
                           >
-                            <ImageIcon className="w-6 h-6 lg:w-8 lg:h-8 text-muted-foreground" />
+                            <div className="w-8 h-8 bg-linear-to-br from-blue-500 to-purple-500 rounded-xl"></div>
                           </div>
                         ))}
                       </div>
@@ -526,17 +526,17 @@ export default function ProductsPage() {
                             <Button
                               onClick={handleSubmit}
                               disabled={!prompt.trim() || isSubmitting}
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                              className="w-full bg-linear-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg"
                               size="lg"
                             >
                               {isSubmitting ? (
                                 <>
-                                  <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                                  <div className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                   Processing...
                                 </>
                               ) : (
                                 <>
-                                  <Send className="w-4 h-4 mr-2" />
+                                  <div className="w-4 h-4 mr-2 bg-white/30 rounded"></div>
                                   Apply Changes
                                 </>
                               )}
@@ -554,8 +554,8 @@ export default function ProductsPage() {
             {!selectedProduct && (
               <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-sm">
                 <CardContent className="flex flex-col items-center justify-center py-12 lg:py-16 px-4">
-                  <div className="w-12 h-12 lg:w-16 lg:h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 lg:mb-6">
-                    <Package className="w-6 h-6 lg:w-8 lg:h-8 text-primary" />
+                  <div className="w-16 h-16 bg-linear-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                    <div className="w-8 h-8 bg-white/30 rounded-lg"></div>
                   </div>
                   <h3 className="text-lg lg:text-xl font-semibold text-foreground mb-2">
                     Select a Product

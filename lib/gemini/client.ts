@@ -69,6 +69,9 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
         ListToolsResultSchema
       );
 
+      const responseData = toolsResponse as any;
+      const tools = responseData.tools || [];
+
       // Convert MCP tools to Gemini function declarations
       const functionDeclarations = tools.map((tool: any) => ({
         name: tool.name,
