@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { axiosClient } from "../axiosClient";
+import { axiosClient } from "@/lib/axiosClient";
 import * as cheerio from "cheerio";
 
 interface RequestFormat {
@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: pageText,
+      message: "Data scraped successfully",
+      scraped_data: pageText,
     });
   } catch (error) {
     console.error("Scraping error:", error);
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: "Error in scraping webpage . "
+        message: "Error in scraping webpage . ",
       },
       { status: 500 }
     );
