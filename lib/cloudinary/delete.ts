@@ -26,5 +26,3 @@ export async function deleteFromCloudinary(
     return { success: false, error: error.message };
   }
 }
-
-
