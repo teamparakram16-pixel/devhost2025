@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock, Building } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -27,7 +29,8 @@ type SignupForm = z.infer<typeof signupSchema>;
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { signup, isLoading } = useAuth();
+  const router = useRouter();
 
   const {
     register,
@@ -38,12 +41,18 @@ export default function SignupPage() {
   });
 
   const onSubmit = async (data: SignupForm) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log("Signup data:", data);
-    setIsLoading(false);
-    // Redirect to dashboard on success
+    try {
+      await signup({
+        email: data.email,
+        password: data.password,
+        name: data.companyName, // Using company name as name for now
+        company: data.companyName
+      });
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Signup failed:', error);
+      // TODO: Show error message to user
+    }
   };
 
   const handleGoogleSignup = () => {

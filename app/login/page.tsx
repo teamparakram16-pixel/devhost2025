@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -21,7 +23,8 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { login, isLoading } = useAuth();
+  const router = useRouter();
 
   const {
     register,
@@ -32,12 +35,13 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginForm) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log("Login data:", data);
-    setIsLoading(false);
-    // Redirect to dashboard on success
+    try {
+      await login(data.email, data.password);
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Login failed:', error);
+      // TODO: Show error message to user
+    }
   };
 
   const handleGoogleLogin = () => {
