@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { DollarSign, Package, ShoppingCart, Users, BarChart3, Activity } from "lucide-react";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -40,7 +41,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
@@ -51,14 +52,14 @@ export default function DashboardPage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md shadow-lg">
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Card className="w-full max-w-md border border-gray-200 shadow-sm">
           <CardHeader className="text-center">
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>Please sign in to view your dashboard</CardDescription>
+            <CardTitle className="text-gray-900">Access Denied</CardTitle>
+            <CardDescription className="text-gray-600">Please sign in to view your dashboard</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild className="w-full">
+            <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               <Link href="/login">Sign In</Link>
             </Button>
           </CardContent>
@@ -72,28 +73,28 @@ const metrics = [
     value: "$124,563",
     change: "+12.5%",
     trend: "up",
-    color: "from-blue-500 to-cyan-500",
+    icon: DollarSign,
   },
   {
     title: "Active Products",
     value: "1,247",
     change: "+8.2%",
     trend: "up",
-    color: "from-purple-500 to-pink-500",
+    icon: Package,
   },
   {
     title: "Total Orders",
     value: "3,456",
     change: "-2.1%",
     trend: "down",
-    color: "from-orange-500 to-red-500",
+    icon: ShoppingCart,
   },
   {
     title: "Active Customers",
     value: "892",
     change: "+15.3%",
     trend: "up",
-    color: "from-green-500 to-emerald-500",
+    icon: Users,
   },
 ];
 
@@ -111,7 +112,7 @@ const alerts = [
 ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -123,57 +124,60 @@ const alerts = [
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {metrics.map((metric, index) => (
-            <Card key={index} className="shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                  {metric.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-3xl font-bold text-gray-900">{metric.value}</div>
-                  <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <div className="w-6 h-6 bg-blue-600 rounded"></div>
+          {metrics.map((metric, index) => {
+            const Icon = metric.icon;
+            return (
+              <Card key={index} className="border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                    {metric.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="text-3xl font-bold text-gray-900">{metric.value}</div>
+                    
+                      <Icon className="w-6 h-6 text-blue-600" />
+                 
                   </div>
-                </div>
-                <div className="flex items-center text-sm mt-3">
-                  <div className={`flex items-center ${metric.trend === "up" ? "text-green-600" : "text-red-600"} font-semibold`}>
-                    {metric.trend === "up" ? (
-                      <span className="mr-1">↑</span>
-                    ) : (
-                      <span className="mr-1">↓</span>
-                    )}
-                    <span>{metric.change}</span>
+                  <div className="flex items-center text-sm mt-3">
+                    <div className={`flex items-center ${metric.trend === "up" ? "text-green-600" : "text-red-600"} font-semibold`}>
+                      {metric.trend === "up" ? (
+                        <span className="mr-1">↑</span>
+                      ) : (
+                        <span className="mr-1">↓</span>
+                      )}
+                      <span>{metric.change}</span>
+                    </div>
+                    <span className="ml-2 text-gray-500">from last month</span>
                   </div>
-                  <span className="ml-2 text-gray-500">from last month</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Charts Section */}
-          <Card className="lg:col-span-2 shadow-lg">
+          <Card className="lg:col-span-2 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <div className="w-5 h-5 bg-blue-600 rounded"></div>
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl font-bold">Sales Performance</CardTitle>
-                  <CardDescription className="text-sm">
+                  <CardTitle className="text-xl font-bold text-gray-900">Sales Performance</CardTitle>
+                  <CardDescription className="text-gray-600">
                     Monthly sales trends and forecasting
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center bg-gray-100 rounded-lg border">
+              <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-lg bg-blue-100 flex items-center justify-center mx-auto mb-4">
-                    <div className="w-8 h-8 bg-blue-600 rounded"></div>
+                  <div className="w-16 h-16 rounded-lg bg-white flex items-center justify-center mx-auto mb-4">
+                    <BarChart3 className="w-8 h-8 text-blue-600 justify-center" />
                   </div>
                   <p className="text-gray-600 font-medium">Chart visualization would go here</p>
                   <p className="text-sm text-gray-500 mt-1">Integration with charting library needed</p>
@@ -183,13 +187,13 @@ const alerts = [
           </Card>
 
           {/* Recent Activity */}
-          <Card className="shadow-lg">
+          <Card className="border border-gray-200 hover:shadow-lg transition-shadow duration-300">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <div className="w-5 h-5 bg-green-600 rounded"></div>
+                <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-green-600" />
                 </div>
-                <CardTitle className="text-xl font-bold">Recent Activity</CardTitle>
+                <CardTitle className="text-xl font-bold text-gray-900">Recent Activity</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -212,15 +216,15 @@ const alerts = [
         </div>
 
         {/* Products Table */}
-        <Card className="shadow-lg">
+        <Card className="border border-gray-200 hover:shadow-lg transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-2xl font-bold">Recent Products</CardTitle>
-              <CardDescription className="text-base mt-1">
+              <CardTitle className="text-2xl font-bold text-gray-900">Recent Products</CardTitle>
+              <CardDescription className="text-gray-600 mt-1">
                 Manage your product inventory and performance
               </CardDescription>
             </div>
-            <Button asChild>
+            <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
               <Link href="/add-product">Add New Product</Link>
             </Button>
           </CardHeader>
@@ -229,11 +233,11 @@ const alerts = [
               <table className="w-full">
                 <thead>
                   <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-4 px-4 font-bold text-gray-900">Product</th>
-                    <th className="text-left py-4 px-4 font-bold text-gray-900">Category</th>
-                    <th className="text-left py-4 px-4 font-bold text-gray-900">Status</th>
-                    <th className="text-left py-4 px-4 font-bold text-gray-900">Sales</th>
-                    <th className="text-left py-4 px-4 font-bold text-gray-900">Actions</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Product</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Category</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Status</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Sales</th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -242,7 +246,7 @@ const alerts = [
                       <td className="py-4 px-4">
                         <div className="font-semibold text-gray-900">{product.name}</div>
                       </td>
-                      <td className="py-4 px-4 text-gray-600 font-medium">{product.category}</td>
+                      <td className="py-4 px-4 text-gray-600">{product.category}</td>
                       <td className="py-4 px-4">
                         <Badge
                           variant={
@@ -256,7 +260,7 @@ const alerts = [
                       </td>
                       <td className="py-4 px-4 text-gray-600 font-semibold">{product.sales}</td>
                       <td className="py-4 px-4">
-                        <Button variant="outline" size="sm" className="hover:bg-gray-50 transition-colors font-medium">
+                        <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
                           View Details
                         </Button>
                       </td>
