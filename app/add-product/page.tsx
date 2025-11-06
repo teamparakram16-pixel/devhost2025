@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { axiosClient } from "@/lib/axiosClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,14 +42,32 @@ export default function AddProductPage() {
     setUploadedFiles(prev => ({ ...prev, [field]: file }));
   };
 
-  const onSubmit = async (data: ProductForm) => {
+const onSubmit = async (data: ProductForm) => {
+  try {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log("Product data:", { ...data, ...uploadedFiles });
+
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("description", data.description);
+    formData.append("expiration_date", data.expiration_date);
+    if (uploadedFiles.image) formData.append("image", uploadedFiles.image);
+    if (uploadedFiles.manufacturing_report)
+      formData.append("manufacturing_report", uploadedFiles.manufacturing_report);
+    if (uploadedFiles.sales_report)
+      formData.append("sales_report", uploadedFiles.sales_report);
+
+    const res = await axiosClient.post("/product/create", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    console.log("✅ Product created:", res.data);
+  } catch (err: any) {
+    console.error("❌ Error:", err);
+  } finally {
     setIsLoading(false);
-    // Redirect to dashboard on success
-  };
+  }
+};
+
 
   const FileUploadField = ({
     id,
