@@ -64,12 +64,11 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
   ) {
     try {
       // Get available tools from MCP
-      const { tools } = await this.mcpClient.request(
+      const responseData = await this.mcpClient.request(
         { method: "tools/list" },
         ListToolsResultSchema
       );
 
-      const responseData = toolsResponse as any;
       const tools = responseData.tools || [];
 
       // Convert MCP tools to Gemini function declarations
