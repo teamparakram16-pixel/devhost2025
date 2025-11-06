@@ -4,18 +4,6 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  TrendingUp,
-  TrendingDown,
-  Package,
-  DollarSign,
-  Users,
-  ShoppingCart,
-  AlertTriangle,
-  BarChart3,
-  PieChart,
-  Activity
-} from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -52,9 +40,9 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
@@ -63,8 +51,8 @@ export default function DashboardPage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <Card className="w-full max-w-md shadow-xl border-0">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="text-center">
             <CardTitle>Access Denied</CardTitle>
             <CardDescription>Please sign in to view your dashboard</CardDescription>
@@ -84,28 +72,28 @@ const metrics = [
     value: "$124,563",
     change: "+12.5%",
     trend: "up",
-    icon: DollarSign,
+    color: "from-blue-500 to-cyan-500",
   },
   {
     title: "Active Products",
     value: "1,247",
     change: "+8.2%",
     trend: "up",
-    icon: Package,
+    color: "from-purple-500 to-pink-500",
   },
   {
     title: "Total Orders",
     value: "3,456",
     change: "-2.1%",
     trend: "down",
-    icon: ShoppingCart,
+    color: "from-orange-500 to-red-500",
   },
   {
     title: "Active Customers",
     value: "892",
     change: "+15.3%",
     trend: "up",
-    icon: Users,
+    color: "from-green-500 to-emerald-500",
   },
 ];
 
@@ -123,38 +111,42 @@ const alerts = [
 ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-2">
-            Welcome back! Here's an overview of your retail operations.
+          <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-2 text-lg">
+            Welcome back! Here&apos;s an overview of your retail operations.
           </p>
         </div>
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {metrics.map((metric, index) => (
-            <Card key={index} className="shadow-sm border-border bg-card hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+            <Card key={index} className="shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                   {metric.title}
                 </CardTitle>
-                <metric.icon className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">{metric.value}</div>
-                <div className="flex items-center text-xs text-muted-foreground mt-1">
-                  {metric.trend === "up" ? (
-                    <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-                  ) : (
-                    <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-                  )}
-                  <span className={metric.trend === "up" ? "text-green-600" : "text-red-600"}>
-                    {metric.change}
-                  </span>
-                  <span className="ml-1">from last month</span>
+                <div className="flex items-center justify-between">
+                  <div className="text-3xl font-bold text-gray-900">{metric.value}</div>
+                  <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <div className="w-6 h-6 bg-blue-600 rounded"></div>
+                  </div>
+                </div>
+                <div className="flex items-center text-sm mt-3">
+                  <div className={`flex items-center ${metric.trend === "up" ? "text-green-600" : "text-red-600"} font-semibold`}>
+                    {metric.trend === "up" ? (
+                      <span className="mr-1">↑</span>
+                    ) : (
+                      <span className="mr-1">↓</span>
+                    )}
+                    <span>{metric.change}</span>
+                  </div>
+                  <span className="ml-2 text-gray-500">from last month</span>
                 </div>
               </CardContent>
             </Card>
@@ -163,46 +155,54 @@ const alerts = [
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Charts Section */}
-          <Card className="lg:col-span-2 shadow-sm border-border bg-card">
+          <Card className="lg:col-span-2 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <BarChart3 className="h-5 w-5 mr-2 text-primary" />
-                Sales Performance
-              </CardTitle>
-              <CardDescription>
-                Monthly sales trends and forecasting
-              </CardDescription>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <div className="w-5 h-5 bg-blue-600 rounded"></div>
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold">Sales Performance</CardTitle>
+                  <CardDescription className="text-sm">
+                    Monthly sales trends and forecasting
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center bg-linear-to-br from-primary/5 to-blue-50 rounded-lg border border-primary/10">
+              <div className="h-64 flex items-center justify-center bg-gray-100 rounded-lg border">
                 <div className="text-center">
-                  <PieChart className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <p className="text-muted-foreground">Chart visualization would go here</p>
-                  <p className="text-sm text-muted-foreground">Integration with charting library needed</p>
+                  <div className="w-16 h-16 rounded-lg bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                    <div className="w-8 h-8 bg-blue-600 rounded"></div>
+                  </div>
+                  <p className="text-gray-600 font-medium">Chart visualization would go here</p>
+                  <p className="text-sm text-gray-500 mt-1">Integration with charting library needed</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Recent Activity */}
-          <Card className="shadow-sm border-border bg-card">
+          <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Activity className="h-5 w-5 mr-2 text-primary" />
-                Recent Activity
-              </CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                  <div className="w-5 h-5 bg-green-600 rounded"></div>
+                </div>
+                <CardTitle className="text-xl font-bold">Recent Activity</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {alerts.map((alert, index) => (
-                  <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                    <div className={`w-2 h-2 rounded-full mt-2 ${
+                  <div key={index} className="flex items-start space-x-3 p-4 rounded-lg bg-white hover:bg-gray-50 transition-colors border">
+                    <div className={`w-3 h-3 rounded-full mt-1 ${
                       alert.type === 'warning' ? 'bg-yellow-500' :
                       alert.type === 'danger' ? 'bg-red-500' : 'bg-blue-500'
                     }`} />
                     <div className="flex-1">
-                      <p className="text-sm text-foreground">{alert.message}</p>
-                      <p className="text-xs text-muted-foreground">{alert.time}</p>
+                      <p className="text-sm text-gray-900 font-medium">{alert.message}</p>
+                      <p className="text-xs text-gray-500 mt-1">{alert.time}</p>
                     </div>
                   </div>
                 ))}
@@ -212,15 +212,15 @@ const alerts = [
         </div>
 
         {/* Products Table */}
-        <Card className="shadow-sm border-border bg-card">
+        <Card className="shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Recent Products</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl font-bold">Recent Products</CardTitle>
+              <CardDescription className="text-base mt-1">
                 Manage your product inventory and performance
               </CardDescription>
             </div>
-            <Button variant="gradient-primary" asChild>
+            <Button asChild>
               <Link href="/add-product">Add New Product</Link>
             </Button>
           </CardHeader>
@@ -228,34 +228,35 @@ const alerts = [
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium text-foreground">Product</th>
-                    <th className="text-left py-3 px-4 font-medium text-foreground">Category</th>
-                    <th className="text-left py-3 px-4 font-medium text-foreground">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-foreground">Sales</th>
-                    <th className="text-left py-3 px-4 font-medium text-foreground">Actions</th>
+                  <tr className="border-b-2 border-gray-200">
+                    <th className="text-left py-4 px-4 font-bold text-gray-900">Product</th>
+                    <th className="text-left py-4 px-4 font-bold text-gray-900">Category</th>
+                    <th className="text-left py-4 px-4 font-bold text-gray-900">Status</th>
+                    <th className="text-left py-4 px-4 font-bold text-gray-900">Sales</th>
+                    <th className="text-left py-4 px-4 font-bold text-gray-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentProducts.map((product, index) => (
-                    <tr key={index} className="border-b border-border hover:bg-muted/50 transition-colors">
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-foreground">{product.name}</div>
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="py-4 px-4">
+                        <div className="font-semibold text-gray-900">{product.name}</div>
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground">{product.category}</td>
-                      <td className="py-3 px-4">
+                      <td className="py-4 px-4 text-gray-600 font-medium">{product.category}</td>
+                      <td className="py-4 px-4">
                         <Badge
                           variant={
-                            product.status === "In Stock" ? "success" :
-                            product.status === "Low Stock" ? "warning" : "danger"
+                            product.status === "In Stock" ? "default" :
+                            product.status === "Low Stock" ? "secondary" : "destructive"
                           }
+                          className="font-medium"
                         >
                           {product.status}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground">{product.sales}</td>
-                      <td className="py-3 px-4">
-                        <Button variant="dashboard-outline" size="sm">
+                      <td className="py-4 px-4 text-gray-600 font-semibold">{product.sales}</td>
+                      <td className="py-4 px-4">
+                        <Button variant="outline" size="sm" className="hover:bg-gray-50 transition-colors font-medium">
                           View Details
                         </Button>
                       </td>
