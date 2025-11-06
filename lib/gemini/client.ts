@@ -44,10 +44,13 @@ export class GeminiMCPClient {
   async chat(message: string, context?: { userId?: string }) {
     try {
       // Get available tools from MCP
-      const { tools } = await this.mcpClient.request<{ tools: any[] }>(
+      const toolsResponse = await (this.mcpClient as any).request(
         { method: "tools/list" },
         {}
       );
+
+      const responseData = toolsResponse as any;
+      const tools = responseData.tools || [];
 
       // Convert MCP tools to Gemini function declarations
       const functionDeclarations = tools.map((tool: any) => ({
@@ -79,7 +82,7 @@ export class GeminiMCPClient {
         console.log(`🔧 Calling tool: ${functionCall.name}`);
 
         // Execute function via MCP
-        const toolResult = await this.mcpClient.request(
+        const toolResult = await (this.mcpClient as any).request(
           {
             method: "tools/call",
             params: {
@@ -96,7 +99,7 @@ export class GeminiMCPClient {
             functionResponse: {
               name: functionCall.name,
               response: {
-                content: toolResult.content[0].text,
+                content: (toolResult as any).content?.[0]?.text || "Tool executed successfully",
               },
             },
           },

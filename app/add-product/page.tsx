@@ -85,7 +85,7 @@ const onSubmit = async (data: ProductForm) => {
   }) => (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary hover:bg-primary/5 transition-all duration-200 cursor-pointer group">
+      <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-blue-600 hover:bg-blue-50 transition-all duration-200 cursor-pointer group">
         <input
           id={id}
           type="file"
@@ -94,11 +94,11 @@ const onSubmit = async (data: ProductForm) => {
           className="hidden"
         />
         <label htmlFor={id} className="cursor-pointer">
-          <Icon className="mx-auto h-12 w-12 text-muted-foreground group-hover:text-primary transition-colors mb-4" />
-          <p className="text-sm text-muted-foreground mb-2 group-hover:text-foreground transition-colors">
+          <Icon className="mx-auto h-12 w-12 text-gray-600 group-hover:text-blue-600 transition-colors mb-4" />
+          <p className="text-sm text-gray-600 mb-2 group-hover:text-gray-900 transition-colors">
             {file ? file.name : `Click to upload ${label.toLowerCase()}`}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-600">
             {accept === "image/*" ? "PNG, JPG, GIF up to 10MB" : "PDF up to 10MB"}
           </p>
         </label>
@@ -113,30 +113,30 @@ const onSubmit = async (data: ProductForm) => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Add New Product</h1>
-              <p className="text-muted-foreground mt-2">
+              <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
+              <p className="text-gray-600 mt-2">
                 Add a new product to your inventory with all necessary details and documents.
               </p>
             </div>
-            <Button variant="dashboard-outline" asChild>
+            <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50" asChild>
               <Link href="/dashboard">Back to Dashboard</Link>
             </Button>
           </div>
         </div>
 
-        <Card className="shadow-sm border-border bg-card">
-          <CardHeader className="bg-linear-to-r from-primary/5 to-blue-50 border-b border-border">
-            <CardTitle className="flex items-center text-primary">
+        <Card className="border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="bg-gray-50 border-b border-gray-200">
+            <CardTitle className="flex items-center text-gray-900">
               <Package className="h-5 w-5 mr-2" />
               Product Information
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-600">
               Fill in the details below to add your product to the system.
             </CardDescription>
           </CardHeader>
@@ -159,7 +159,7 @@ const onSubmit = async (data: ProductForm) => {
                 <div className="space-y-2">
                   <Label htmlFor="expiration_date">Expiration Date</Label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-600" />
                     <Input
                       id="expiration_date"
                       type="date"
@@ -188,7 +188,7 @@ const onSubmit = async (data: ProductForm) => {
 
               {/* File Uploads */}
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-foreground">Product Documents</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Product Documents</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <FileUploadField
@@ -218,11 +218,11 @@ const onSubmit = async (data: ProductForm) => {
               </div>
 
               {/* Submit Button */}
-              <div className="flex justify-end space-x-4 pt-6 border-t border-border">
-                <Button variant="dashboard-outline" type="button" asChild>
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50" type="button" asChild>
                   <Link href="/dashboard">Cancel</Link>
                 </Button>
-                <Button variant="gradient-primary" type="submit" disabled={isLoading} className="min-w-[140px]">
+                <Button variant="default" className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px]" type="submit" disabled={isLoading}>
                   {isLoading ? "Adding Product..." : "Add Product"}
                 </Button>
               </div>
