@@ -58,6 +58,7 @@ const onSubmit = async (data: ProductForm) => {
 
     const res = await axiosClient.post("/product/create", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+       withCredentials: true,
     });
 
     console.log("✅ Product created:", res.data);
