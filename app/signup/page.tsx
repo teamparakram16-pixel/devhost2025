@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock, Building } from "lucide-react";
-import { useAuth } from "@/contexts/auth-context";
+import { supabase } from "@/lib/supabaseClient";
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -29,7 +29,8 @@ type SignupForm = z.infer<typeof signupSchema>;
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { signup, isLoading } = useAuth();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const {
@@ -41,17 +42,51 @@ export default function SignupPage() {
   });
 
   const onSubmit = async (data: SignupForm) => {
+    setErrorMessage(null);
+    setIsLoading(true);
+
     try {
-      await signup({
+      // First, sign up the user with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
-        name: data.companyName, // Using company name as name for now
-        company: data.companyName
       });
-      router.push('/dashboard');
+
+      if (authError) {
+        setErrorMessage(authError.message);
+        return;
+      }
+
+      // If user was created, create the company record
+      if (authData.user) {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: data.email,
+            password: data.password,
+            company_name: data.companyName
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          // If company creation fails, we should probably clean up the auth user
+          // But for now, just show the error
+          setErrorMessage(result.error || 'Account created but company setup failed');
+          return;
+        }
+      }
+
+      // Signup successful, show success message and redirect to login
+      alert('Account created successfully! Please check your email to confirm your account, then sign in.');
+      router.push('/login');
     } catch (error) {
-      console.error('Signup failed:', error);
-      // TODO: Show error message to user
+      console.error('Signup error:', error);
+      setErrorMessage('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -162,6 +197,7 @@ export default function SignupPage() {
               <input
                 id="terms"
                 type="checkbox"
+                title="I agree to the Terms of Service and Privacy Policy"
                 className="h-4 w-4 text-primary border-border rounded focus:ring-primary"
                 required
               />
@@ -176,6 +212,12 @@ export default function SignupPage() {
                 </Link>
               </Label>
             </div>
+
+            {errorMessage && (
+              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-destructive">{errorMessage}</p>
+              </div>
+            )}
 
             <Button type="submit" variant="gradient-primary" disabled={isLoading} className="w-full">
               {isLoading ? "Creating account..." : "Create account"}

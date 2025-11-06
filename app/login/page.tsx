@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import { useAuth } from "@/contexts/auth-context";
+import { supabase } from "@/lib/supabaseClient";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -23,8 +23,9 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const {
     register,
@@ -35,17 +36,31 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginForm) => {
+    setErrorMessage('');
+    setIsLoading(true);
+
     try {
-      await login(data.email, data.password);
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
+
+      // Login successful, redirect to dashboard
       router.push('/dashboard');
     } catch (error) {
-      console.error('Login failed:', error);
-      // TODO: Show error message to user
+      console.error('Login error:', error);
+      setErrorMessage('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
-    // Implement Google OAuth
     console.log("Google login clicked");
   };
 
@@ -111,6 +126,7 @@ export default function LoginPage() {
                 <input
                   id="remember"
                   type="checkbox"
+                  title="Remember me"
                   className="h-4 w-4 text-primary border-border rounded focus:ring-primary"
                 />
                 <Label htmlFor="remember" className="text-sm">
@@ -124,6 +140,12 @@ export default function LoginPage() {
                 Forgot password?
               </Link>
             </div>
+
+            {errorMessage && (
+              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-destructive">{errorMessage}</p>
+              </div>
+            )}
 
             <Button type="submit" variant="gradient-primary" disabled={isLoading} className="w-full">
               {isLoading ? "Signing in..." : "Sign in"}
