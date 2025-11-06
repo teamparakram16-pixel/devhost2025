@@ -11,12 +11,14 @@ export async function POST(req: Request) {
     });
 
     if (signUpError) {
+      console.log("signup error : ",signUpError)
       return new Response(JSON.stringify({ error: signUpError.message }), { status: 400 });
     }
 
     const userId = signUpData.user?.id;
 
     if (!userId) {
+      console.log("no user error")
       return new Response(JSON.stringify({ error: "User creation failed" }), { status: 400 });
     }
 
@@ -26,10 +28,11 @@ export async function POST(req: Request) {
       .insert({
         id: userId,
         company_name,
-        email,
+        email
       });
 
     if (companyError) {
+      console.log("company error")
       return new Response(JSON.stringify({ error: companyError.message }), { status: 400 });
     }
 
