@@ -9,6 +9,7 @@ import {
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { createClient } from "@supabase/supabase-js";
+import * as cheerio from "cheerio";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,29 +40,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {
-            video_id: {
-              type: "string",
-              description: "YouTube video ID",
-            },
+            video_id: { type: "string", description: "YouTube video ID" },
           },
           required: ["video_id"],
         },
       },
       {
         name: "youtube_search",
-        description: "Search YouTube videos by keywords",
+        description:
+          "Search YouTube videos by keywords (returns lightweight metadata only)",
         inputSchema: {
           type: "object",
           properties: {
-            query: {
-              type: "string",
-              description: "Search query keywords",
-            },
-            maxResults: {
-              type: "number",
-              description:
-                "Maximum number of results to return (optional, default 5)",
-            },
+            query: { type: "string" },
+            maxResults: { type: "number" },
+          },
+          required: ["query"],
+        },
+      },
+      {
+        name: "google_search",
+        description:
+          "Search the web (Google Custom Search) and return lightweight results (title, link, snippet)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string" },
+            maxResults: { type: "number" },
           },
           required: ["query"],
         },
@@ -73,27 +78,59 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {
-            product_id: {
-              type: "string",
-              description: "Product ID to look up in the products table",
-            },
+            product_id: { type: "string" },
           },
           required: ["product_id"],
         },
       },
       {
-        name: "reddiy_scrape",
+        name: "reddit_scrape",
         description:
-          "Scrape and extract data from Reddit posts by URL without API key",
+          "Scrape and extract a trimmed excerpt from a Reddit post/thread URL (POST /reddit/extract)",
         inputSchema: {
           type: "object",
           properties: {
-            reddit_url: {
-              type: "string",
-              description: "Reddit post or comment URL to scrape",
-            },
+            reddit_url: { type: "string" },
           },
           required: ["reddit_url"],
+        },
+      },
+      {
+        name: "summarize_search_hits",
+        description:
+          "Score and return the top-N most relevant hits from a list of search results (no deep fetch)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string" },
+            hits: { type: "array", items: { type: "object" } },
+            maxResults: { type: "number" },
+          },
+          required: ["query", "hits"],
+        },
+      },
+      {
+        name: "expand_selected_sources",
+        description:
+          "Given selected hits (videoId/url), fetch detailed data: transcripts for videos and scraped text for reddit links",
+        inputSchema: {
+          type: "object",
+          properties: {
+            selections: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  type: { type: "string" }, // 'video'|'reddit'|'link'
+                  id: { type: "string" },
+                  url: { type: "string" },
+                  videoId: { type: "string" },
+                  title: { type: "string" },
+                },
+              },
+            },
+          },
+          required: ["selections"],
         },
       },
     ],
@@ -101,9 +138,27 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 // ✅ TOOL EXECUTION HANDLER
+// helper: simple token overlap scorer
+function scoreTextOverlap(query: string, text: string) {
+  const tokenize = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+  const qSet = new Set(tokenize(query));
+  const tTokens = tokenize(text);
+  let matches = 0;
+  for (const t of tTokens) if (qSet.has(t)) matches++;
+  return {
+    matches,
+    tokenCount: tTokens.length,
+    score: tTokens.length === 0 ? 0 : matches / Math.max(qSet.size, 1),
+  };
+}
+
 server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
   const { name, arguments: args } = request.params;
-
   try {
     switch (name) {
       case "fetch_youtube_transcript": {
@@ -195,7 +250,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
           ],
         };
       }
-      case "reddiy_scrape": {
+      case "google_search": {
+        const { query, maxResults = 5 } = args as {
+          query: string;
+          maxResults?: number;
+        };
+        if (!query) throw new Error("query is required");
+        const apiKey =
+          process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+        const cx = process.env.GOOGLE_CX;
+        if (!apiKey || !cx)
+          throw new Error("Missing Google search API key or CX");
+        const url = "https://www.googleapis.com/customsearch/v1";
+        const resp = await axiosClient.get(url, {
+          params: { key: apiKey, cx, q: query, num: Math.min(maxResults, 10) },
+        });
+        const items = resp?.data?.items || [];
+        const lightweight = items.map((it: any) => ({
+          title: it.title,
+          link: it.link,
+          snippet: it.snippet,
+        }));
+        return {
+          content: [
+            { type: "text", text: JSON.stringify(lightweight, null, 2) },
+          ],
+        };
+      }
+
+      case "reddit_scrape": {
         const { reddit_url } = args as { reddit_url: string };
         if (!reddit_url) {
           throw new Error("reddit_url is required");
@@ -277,6 +360,112 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
         };
       }
 
+      case "summarize_search_hits": {
+        const {
+          query,
+          hits,
+          maxResults = 5,
+        } = args as { query: string; hits: any[]; maxResults?: number };
+        if (!query || !Array.isArray(hits))
+          throw new Error("query and hits are required");
+        const scored = hits.map((h: any, idx: number) => {
+          const title = (h.title || h.snippet || h.link || "").toString();
+          const snippet = (h.snippet || "").toString();
+          const { score, matches } = scoreTextOverlap(
+            query,
+            `${title} ${snippet}`
+          );
+          return {
+            id: h.videoId || h.link || h.url || `hit_${idx}`,
+            type: h.videoId
+              ? "video"
+              : h.link?.includes("reddit.com")
+              ? "reddit"
+              : "link",
+            title: title,
+            url: h.link || h.url || null,
+            videoId: h.videoId || null,
+            snippet,
+            score,
+            reason: `matched_tokens=${matches}`,
+          };
+        });
+        scored.sort((a: any, b: any) => b.score - a.score);
+        const selected = scored.slice(0, maxResults);
+        return {
+          content: [{ type: "text", text: JSON.stringify(selected, null, 2) }],
+        };
+      }
+
+      case "expand_selected_sources": {
+        const { selections } = args as { selections: any[] };
+        if (!Array.isArray(selections))
+          throw new Error("selections is required");
+        const results: any[] = [];
+        for (const s of selections) {
+          try {
+            if (s.type === "video" || s.videoId) {
+              const vid = s.videoId || s.id;
+              const transcript = await fetchYouTubeTranscript(vid);
+              results.push({
+                type: "video",
+                id: vid,
+                title: s.title || null,
+                transcript_excerpt: transcript
+                  ? transcript.text.slice(0, 5000)
+                  : null,
+                transcript_meta: transcript
+                  ? {
+                      duration: transcript.duration,
+                      language: transcript.language,
+                      segments: transcript.segments?.slice(0, 10),
+                    }
+                  : null,
+              });
+            } else if (
+              s.type === "reddit" ||
+              (s.url && s.url.includes("reddit.com"))
+            ) {
+              // call internal Next.js scraping endpoint
+              const resp = await axiosClient.post("/reddit/extract", {
+                url: s.url,
+              });
+              const body = resp?.data;
+              const scraped = body?.scraped_data ?? body?.message ?? "";
+              results.push({
+                type: "reddit",
+                id: s.id || s.url,
+                url: s.url,
+                title: s.title || null,
+                excerpt: scraped?.slice(0, 20000) ?? null,
+              });
+            } else if (s.type === "link" && s.url) {
+              const resp = await axiosClient.get(s.url, { timeout: 10_000 });
+              const $ = cheerio.load(resp.data);
+              const text = $("body").text().replace(/\s+/g, " ").trim();
+              results.push({
+                type: "link",
+                id: s.id || s.url,
+                url: s.url,
+                title: s.title || null,
+                excerpt: text.slice(0, 20000),
+              });
+            } else {
+              results.push({ type: "unknown", id: s.id || null, raw: s });
+            }
+          } catch (err: any) {
+            results.push({
+              type: s.type || "unknown",
+              id: s.id || s.url || null,
+              error: String(err?.message || err),
+            });
+          }
+        }
+        return {
+          content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
+        };
+      }
+
       default: {
         // Return a structured error for unknown tool names so the handler never returns undefined
         return {
@@ -304,71 +493,71 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
 });
 
 // ✅ RESOURCES: Static content that can be read
-server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  return {
-    resources: [
-      {
-        uri: "sahyadriprep://placement-statistics",
-        name: "Placement Statistics",
-        description: "Overall placement statistics across all colleges",
-        mimeType: "application/json",
-      },
-      {
-        uri: "sahyadriprep://top-companies",
-        name: "Top Companies",
-        description: "List of top recruiting companies",
-        mimeType: "application/json",
-      },
-    ],
-  };
-});
+// server.setRequestHandler(ListResourcesRequestSchema, async () => {
+//   return {
+//     resources: [
+//       {
+//         uri: "sahyadriprep://placement-statistics",
+//         name: "Placement Statistics",
+//         description: "Overall placement statistics across all colleges",
+//         mimeType: "application/json",
+//       },
+//       {
+//         uri: "sahyadriprep://top-companies",
+//         name: "Top Companies",
+//         description: "List of top recruiting companies",
+//         mimeType: "application/json",
+//       },
+//     ],
+//   };
+// });
 
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const { uri } = request.params;
+// server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+//   const { uri } = request.params;
 
-  switch (uri) {
-    case "sahyadriprep://placement-statistics": {
-      const { data: colleges } = await supabase.from("colleges").select("*");
+//   switch (uri) {
+//     case "sahyadriprep://placement-statistics": {
+//       const { data: colleges } = await supabase.from("colleges").select("*");
 
-      return {
-        contents: [
-          {
-            uri,
-            mimeType: "application/json",
-            text: JSON.stringify(colleges, null, 2),
-          },
-        ],
-      };
-    }
+//       return {
+//         contents: [
+//           {
+//             uri,
+//             mimeType: "application/json",
+//             text: JSON.stringify(colleges, null, 2),
+//           },
+//         ],
+//       };
+//     }
 
-    case "sahyadriprep://top-companies": {
-      const { data: companies } = await supabase
-        .from("companies")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
+//     case "sahyadriprep://top-companies": {
+//       const { data: companies } = await supabase
+//         .from("companies")
+//         .select("*")
+//         .order("created_at", { ascending: false })
+//         .limit(50);
 
-      return {
-        contents: [
-          {
-            uri,
-            mimeType: "application/json",
-            text: JSON.stringify(companies, null, 2),
-          },
-        ],
-      };
-    }
+//       return {
+//         contents: [
+//           {
+//             uri,
+//             mimeType: "application/json",
+//             text: JSON.stringify(companies, null, 2),
+//           },
+//         ],
+//       };
+//     }
 
-    default:
-      throw new Error(`Unknown resource: ${uri}`);
-  }
-});
+//     default:
+//       throw new Error(`Unknown resource: ${uri}`);
+//   }
+// });
 
 // Start server
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("SahyadriPrep MCP Server running on stdio");
+  console.error("DevHost2025 MCP Server running on stdio");
 }
 
 main().catch(console.error);

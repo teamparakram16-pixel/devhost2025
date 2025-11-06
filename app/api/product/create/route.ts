@@ -16,7 +16,9 @@ export async function POST(req: Request) {
     const description = formData.get("description") as string | null;
     const expiration_date = formData.get("expiration_date") as string | null;
 
-    const manufacturing_report = formData.get("manufacturing_report") as File | null;
+    const manufacturing_report = formData.get(
+      "manufacturing_report"
+    ) as File | null;
     const sales_report = formData.get("sales_report") as File | null;
     const image = formData.get("image") as File | null;
 
@@ -31,24 +33,30 @@ export async function POST(req: Request) {
 
     if (!name) {
       console.warn("⚠️ Missing product name");
-      return new Response(JSON.stringify({ error: "Product name is required" }), { status: 400 });
+      return new Response(
+        JSON.stringify({ error: "Product name is required" }),
+        { status: 400 }
+      );
     }
 
     // Get logged-in user
     console.log("🔑 Checking Supabase session...");
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const { data: user_data, error: user_error } =
+      await supabase.auth.getUser();
 
-    if (sessionError) {
-      console.error("❌ Supabase session error:", sessionError);
+    if (user_error) {
+      console.error("❌ Supabase user error:", user_error);
     }
 
-    if (!sessionData.session) {
-      console.warn("⚠️ No valid session found");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    if (!user_data) {
+      console.warn("⚠️ No valid user found");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+      });
     }
 
-    const user = sessionData.session.user;
-    const userId = user.id;
+    const user = user_data.user;
+    const userId = user?.id;
     console.log("👤 Authenticated user:", userId);
 
     // Get company linked to this user
@@ -65,7 +73,9 @@ export async function POST(req: Request) {
 
     if (!company) {
       console.warn("⚠️ Company not found for user:", userId);
-      return new Response(JSON.stringify({ error: "Company not found" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "Company not found" }), {
+        status: 400,
+      });
     }
 
     const company_id = company.id;
@@ -92,7 +102,11 @@ export async function POST(req: Request) {
       console.log("🧹 Deleting temp file...");
       await fs.unlink(tempPath);
 
-      if (!uploadResult.success || !uploadResult.publicId || !uploadResult.url) {
+      if (
+        !uploadResult.success ||
+        !uploadResult.publicId ||
+        !uploadResult.url
+      ) {
         console.error("❌ Cloudinary upload failed for", file.name);
         throw new Error(`Failed to upload ${file.name}: ${uploadResult.error}`);
       }
@@ -133,7 +147,10 @@ export async function POST(req: Request) {
 
     if (manufacturing_report) {
       console.log("📤 Uploading manufacturing report...");
-      manufacturing_id = await handleMediaUpload(manufacturing_report, "manufacturing_reports");
+      manufacturing_id = await handleMediaUpload(
+        manufacturing_report,
+        "manufacturing_reports"
+      );
     }
 
     if (sales_report) {
@@ -181,9 +198,12 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("❌ [CATCH] Error creating product:", error);
     console.error("🪲 Stack trace:", error.stack);
-    return new Response(JSON.stringify({ error: error.message || "Server error" }), {
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({ error: error.message || "Server error" }),
+      {
+        status: 500,
+      }
+    );
   } finally {
     console.log("🏁 [END] Product creation attempt complete");
   }
