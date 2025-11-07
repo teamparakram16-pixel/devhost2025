@@ -134,7 +134,6 @@ export default function Home() {
 
   // --- Core Logic ---
   const handleReplyClick = (replyText: string) => {
-    // 1. Add user's message to chat
     const userMessage: Message = {
       id: `user-${messages.length}`,
       sender: "user",
@@ -142,13 +141,10 @@ export default function Home() {
     };
     setMessages((prev) => [...prev, userMessage]);
 
-    // 2. Set "Thinking..." state
     setIsThinking(true);
 
-    // 3. Find the next step in the conversation
     const nextStepIndex = currentStep + 1;
 
-    // 4. Simulate AI reply delay
     setTimeout(() => {
       setIsThinking(false);
 

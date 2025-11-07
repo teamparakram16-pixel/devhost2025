@@ -62,9 +62,6 @@ export function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">RA</span>
-              </div>
               <span className="text-xl font-bold text-gray-900">RetailAI</span>
             </Link>
           </div>
@@ -81,6 +78,9 @@ export function Navbar() {
                 </Link>
                 <Link href="/add-product" className="text-gray-600 hover:text-gray-900 transition-colors font-medium">
                   Add Product
+                </Link>
+                <Link href="/product" className="text-gray-600 hover:text-gray-900 transition-colors font-medium">
+                  Demand Analysis
                 </Link>
                 <div className="relative ml-4" ref={dropdownRef}>
                   <button
