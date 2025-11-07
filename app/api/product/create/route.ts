@@ -3,6 +3,7 @@ import { uploadToCloudinary } from "@/lib/cloudinary/upload";
 import fs from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { createClient } from "@/lib/supabaseServer";
 
 export async function POST(req: Request) {
   try {
@@ -41,6 +42,9 @@ export async function POST(req: Request) {
 
     // Get logged-in user
     console.log("🔑 Checking Supabase session...");
+
+    const supabase = await createClient();
+
     const { data: user_data, error: user_error } =
       await supabase.auth.getUser();
 
@@ -86,9 +90,14 @@ export async function POST(req: Request) {
       console.log(`⬆️ Starting upload for ${file.name} to folder: ${folder}`);
 
       const buffer = Buffer.from(await file.arrayBuffer());
-      const tempPath = path.join("/tmp", `${randomUUID()}-${file.name}`);
 
-      console.log("📝 Writing temp file:", tempPath);
+      // ensure public/files exists and write file there so it's served from /files/<name>
+      const publicFilesDir = path.join(process.cwd(), "public", "files");
+      await fs.mkdir(publicFilesDir, { recursive: true });
+      const fileName = `${randomUUID()}-${file.name}`;
+        const tempPath = path.join(publicFilesDir, fileName);
+
+      console.log("📝 Writing file to public/files:", tempPath);
       await fs.writeFile(tempPath, buffer);
 
       console.log("☁️ Uploading to Cloudinary...");

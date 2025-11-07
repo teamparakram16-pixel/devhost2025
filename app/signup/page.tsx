@@ -45,19 +45,8 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // First, sign up the user with Supabase
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-      });
 
-      if (authError) {
-        setErrorMessage(authError.message);
-        return;
-      }
 
-      // If user was created, create the company record
-      if (authData.user) {
         const response = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -76,7 +65,7 @@ export default function SignupPage() {
           setErrorMessage(result.error || 'Account created but company setup failed');
           return;
         }
-      }
+    
 
       // Signup successful, show success message and redirect to login
       alert('Account created successfully! Please check your email to confirm your account, then sign in.');

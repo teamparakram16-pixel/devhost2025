@@ -1,12 +1,16 @@
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabaseServer";
 
 export async function GET() {
   try {
+    const supabase = await createClient();
 
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
 
     if (sessionError || !sessionData.session) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+      });
     }
 
     const user = sessionData.session.user;
@@ -19,7 +23,9 @@ export async function GET() {
       .single();
 
     if (companyError || !company) {
-      return new Response(JSON.stringify({ error: "Company not found" }), { status: 404 });
+      return new Response(JSON.stringify({ error: "Company not found" }), {
+        status: 404,
+      });
     }
 
     const company_id = company.id;
@@ -28,7 +34,8 @@ export async function GET() {
     // Join with media table to get URLs of linked files
     const { data: products, error: productsError } = await supabase
       .from("products")
-      .select(`
+      .select(
+        `
         id,
         name,
         description,
@@ -39,12 +46,15 @@ export async function GET() {
         image:media!products_image_fkey (id, url, file_name),
         manufacturing_report:media!products_manufacturing_report_fkey (id, url, file_name),
         sales_report:media!products_sales_report_fkey (id, url, file_name)
-      `)
+      `
+      )
       .eq("company_id", company_id)
       .order("created_at", { ascending: false });
 
     if (productsError) {
-      return new Response(JSON.stringify({ error: productsError.message }), { status: 500 });
+      return new Response(JSON.stringify({ error: productsError.message }), {
+        status: 500,
+      });
     }
 
     return new Response(
@@ -57,8 +67,11 @@ export async function GET() {
     );
   } catch (error: any) {
     console.error("❌ Error fetching products:", error);
-    return new Response(JSON.stringify({ error: error.message || "Server error" }), {
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({ error: error.message || "Server error" }),
+      {
+        status: 500,
+      }
+    );
   }
 }
