@@ -1,6 +1,7 @@
 import { fetchYouTubeTranscript } from "@/helpers/youtube-video.helpers";
 import { axiosClient } from "@/lib/axiosClient";
-import { createClient } from "@/lib/supabaseServer";
+import { createAdminClient } from "@/lib/supabaseAdmin";
+// import { createClient } from "@/lib/supabaseServer";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -9,11 +10,6 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 // import { createClient } from "@supabase/supabase-js";
 import * as cheerio from "cheerio";
-
-// const supabase = createClient(
-//   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-//   process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role for MCP
-// );
 
 // Initialize MCP Server
 const server = new Server(
@@ -325,8 +321,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
           throw new Error("product_id is required");
         }
 
-        const supabase = await createClient();
-
+        const supabase = createAdminClient();
         const { data: product, error } = await supabase
           .from("products")
           .select("*")
@@ -499,7 +494,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
     };
   }
 });
-
 
 // Start server
 async function main() {
