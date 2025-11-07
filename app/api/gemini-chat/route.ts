@@ -39,14 +39,44 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log(`gemini-chat route: user_id=${user_id} product_id=${product_id} message=${message.substring(0, 50)}...`);
+    console.log(
+      `gemini-chat route: user_id=${user_id} product_id=${product_id} message=${message.substring(
+        0,
+        50
+      )}...`
+    );
 
     // Attempt chat, retry once if MCP connection was closed
     let client = await getClient();
     try {
+      // Fetch product details from Supabase here and pass them into the chat context
+      let productRecord: any = null;
+      if (product_id) {
+        try {
+          const { data: product, error } = await supabase
+            .from("products")
+            .select("*")
+            .eq("id", product_id)
+            .single();
+          if (error) {
+            console.warn(
+              "Failed to fetch product from supabase:",
+              error.message ?? error
+            );
+          } else {
+            productRecord = product;
+          }
+        } catch (fetchErr) {
+          console.warn("Error fetching product:", fetchErr);
+        }
+      }
+
+      console.log("Product record fetched:", productRecord);
+
       const resultText = await client.chat(message, {
         userId: user_id,
         productId: product_id,
+        product: productRecord, // send full product object (or null) to MCP/Gemini client
       });
       return NextResponse.json({ success: true, text: resultText });
     } catch (err: any) {

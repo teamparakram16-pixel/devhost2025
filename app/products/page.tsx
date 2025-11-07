@@ -68,6 +68,11 @@ export default function ProductsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
+  // analysis / AI results from /api/analyze-product
+  const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  const [aiResult, setAiResult] = useState<any | null>(null);
+  const [sourcesOpen, setSourcesOpen] = useState<boolean>(true);
+
   // fetch products from backend and populate select
   useEffect(() => {
     let mounted = true;
@@ -134,30 +139,51 @@ export default function ProductsPage() {
     try {
       const payload = {
         message: prompt,
-        userId: undefined,
         product_id: selectedProduct.id,
       };
 
-      console.log("Selected Product:", selectedProduct);
+      console.log("Analyzing product:", selectedProduct.name);
+      
+      // First call analyze-product to gather all the data
+      const analysisResp = await axiosClient.post("/analyze-product", payload);
+      
+      if (!analysisResp?.data?.success) {
+        throw new Error(analysisResp?.data?.error || "Failed to analyze product");
+      }
 
-      console.log("Submitting prompt to Gemini:", payload);
-      const resp = await axiosClient.post("/gemini-chat", payload);
-      if (resp?.data?.success) {
-        console.log("Gemini response:", resp.data.text);
+      const analysisData = analysisResp.data.data;
+      console.log("Product analysis data:", analysisData);
+      // store for UI
+      setAnalysisResult(analysisData.analysis ?? analysisData);
+      setAiResult(analysisData.ai ?? null);
+
+      // Then call Gemini with the enriched context
+      const geminiResp = await axiosClient.post("/api/gemini-chat", {
+        message: prompt,
+        product_id: selectedProduct.id,
+        context: {
+          youtube_data: analysisData.youtube_data,
+          reddit_data: analysisData.reddit_data,
+          product: analysisData.product
+        }
+      });
+
+      if (geminiResp?.data?.success) {
+        console.log("Gemini response:", geminiResp.data.text);
         alert(
           `AI response received for ${selectedProduct.name}. Check console for details.`
         );
       } else {
-        console.error("Gemini error:", resp?.data);
-        alert(`AI request failed: ${resp?.data?.error || "unknown error"}`);
+        throw new Error(geminiResp?.data?.error || "Failed to get AI response");
       }
+      
       setPrompt("");
     } catch (error: any) {
-      console.error("Error submitting prompt:", error);
+      console.error("Error analyzing product:", error);
       alert(
         error?.response?.data?.error ||
           error?.message ||
-          "Error submitting prompt. Please try again."
+          "Error analyzing product. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -598,6 +624,80 @@ export default function ProductsPage() {
                               )}
                             </Button>
                           </div>
+                          {/* AI Result */}
+                          {aiResult && (
+                            <div className="mt-6 p-4 bg-muted/10 rounded-lg border border-border">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <div className="text-sm font-medium">AI Analysis</div>
+                                  <div className="mt-2 text-sm">
+                                    <div>
+                                      <span className="font-semibold">Demand:</span>{" "}
+                                      <Badge className="mr-2">{aiResult.demand_level}</Badge>
+                                    </div>
+                                    <div className="mt-1">
+                                      <span className="font-semibold">Predicted price:</span>{" "}
+                                      <span className="text-sm text-foreground">${aiResult.predicted_price}</span>
+                                    </div>
+                                    <div className="mt-2 text-sm text-muted-foreground">
+                                      {aiResult.reasoning}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div>
+                                  <button
+                                    onClick={() => setSourcesOpen((s) => !s)}
+                                    className="text-xs text-primary underline"
+                                    type="button"
+                                  >
+                                    {sourcesOpen ? "Hide sources" : "Show sources"}
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              {/* Sources section (YouTube videos) */}
+                              {sourcesOpen && analysisResult?.youtube_data && (
+                                <div className="mt-4">
+                                  <div className="text-sm font-medium mb-2">Sources (YouTube)</div>
+                                  <div className="space-y-3">
+                                    {(analysisResult.youtube_data.videos || []).map((v: any) => {
+                                      const transcriptObj =
+                                        (analysisResult.youtube_data.transcripts || []).find(
+                                          (t: any) => t.videoId === v.videoId
+                                        ) ?? null;
+                                      return (
+                                        <div
+                                          key={v.videoId}
+                                          className="p-3 bg-white/80 border border-border rounded-lg"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div className="text-sm font-medium">
+                                              <a
+                                                href={`https://www.youtube.com/watch?v=${v.videoId}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-primary underline"
+                                              >
+                                                {v.title || v.videoId}
+                                              </a>
+                                              <div className="text-xs text-muted-foreground">
+                                                {v.channelTitle} • {new Date(v.publishedAt).toLocaleDateString()}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          {transcriptObj?.transcript && (
+                                            <div className="mt-2 text-xs text-muted-foreground">
+                                              {String(transcriptObj.transcript).slice(0, 400)}{String(transcriptObj.transcript).length > 400 ? "…" : ""}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </TabsContent>

@@ -64,7 +64,7 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
 
   async chat(
     message: string,
-    context?: { userId?: string; productId?: string }
+    context?: { userId?: string; productId?: string; product?: any }
   ) {
     try {
       // Get available tools from MCP
@@ -109,14 +109,42 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
       }
 
       // Start chat with function calling enabled; let Gemini decide if/when to call tools
-      // Google Generative API expects the functions key (not "tools")
       const chat = this.model.startChat({
         functions: functionDeclarations,
         history,
       });
 
-      // send user's initial message
-      let result = await chat.sendMessage(message);
+      // placeholder for the initial send result
+      let result: any = null;
+
+      // If route provided full product record, inject it into the chat so the model receives canonical product metadata first.
+      // We inject as a functionResponse named "fetch_product_details" (the model expects that tool output format).
+      if (context?.product) {
+        console.log("Product context provided:", context.product.id ?? "(no id)");
+        const forcedPayload = JSON.stringify(context.product, null, 2);
+        const functionResponseMessage = {
+          functionResponse: {
+            name: "fetch_product_details",
+            response: { content: forcedPayload },
+          },
+        };
+        console.log(
+          "⚙️ Injecting product into chat (provided by route):",
+          context.product.id ?? "(no id)"
+        );
+        // send the functionResponse as its own message (SDK requires it not be mixed)
+        await chat.sendMessage([functionResponseMessage]);
+        // then send the user's message so the model sees product data + user query in order
+        result = await chat.sendMessage(message);
+      } else {
+        // no inline product provided — just send user's message (the model may call tools itself)
+        result = await chat.sendMessage(message);
+      }
+
+      // result is set by the sends above; if not, send user's message now
+      if (!result) {
+        result = await chat.sendMessage(message);
+      }
       console.log(
         "💬 Gemini initial response (full):",
         JSON.stringify(result.response?.toJSON?.() ?? result.response, null, 2)
