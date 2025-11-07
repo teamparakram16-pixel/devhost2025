@@ -1,186 +1,206 @@
-// import { NextRequest, NextResponse } from "next/server"
-// import { supabase } from "@/lib/supabaseClient"
-// import { callGemini } from "@/lib/callGemini"
-// import { callMCP } from "@/lib/callMCP"
+import { NextRequest, NextResponse } from "next/server"
+import { supabase } from "@/lib/supabaseClient"
+import { callGemini } from "@/lib/callGemini"
+import { callMCP } from "@/lib/callMCP"
 
-// // 🧩 Type definitions
-// interface Product {
-//   id: string
-//   name: string
-//   description: string | null
-// }
+// 🧩 Type definitions
+interface Product {
+  id: string
+  name: string
+  description: string | null
+}
 
-// interface ProductThread {
-//   id: string
-//   product_id: string
-//   ai_questions: string[]
-//   user_answers: string[]
-//   status: "pending" | "in_progress" | "completed"
-//   ai_generated_path?: string
-//   sources?: { source: string; url: string }[]
-// }
+interface ProductThread {
+  id: string
+  product_id: string
+  ai_questions: string[]
+  user_answers: string[]
+  status: "pending" | "in_progress" | "completed"
+  ai_generated_path?: string
+  sources?: { source: string; url: string }[]
+}
 
-// // 🧠 Helper: standardized JSON response
-// function jsonResponse(data: any, status = 200) {
-//   return NextResponse.json(data, { status })
-// }
+// 🧠 Helper: standardized JSON response
+function jsonResponse(data: any, status = 200) {
+  return NextResponse.json(data, { status })
+}
 
-// // ⚙️ API Route: Create or continue Demand Path thread
-// export async function POST(req: NextRequest) {
-//   try {
-//     const { product_id, user_answer }: { product_id: string; user_answer?: string } = await req.json()
+// ⚙️ API Route: Create or continue Demand Path thread
+export async function POST(req: NextRequest) {
+  try {
+    const { product_id, user_answer }: { product_id: string; user_answer?: string } = await req.json()
 
-//     if (!product_id) {
-//       return jsonResponse({ error: "Missing product_id" }, 400)
-//     }
+    // If caller didn't provide a product_id, return company products
+    if (!product_id) {
+      try {
+        const base =
+          process.env.NEXT_PUBLIC_BASE_URL ||
+          `http://localhost:${process.env.PORT ?? 3000}`
+        const resp = await fetch(`${base}company/getProducts`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+        const json = await resp.json()
+        // normalize response so frontend receives { products: [...] }
+        const products = json?.products ?? json?.data ?? json
+        return jsonResponse({ products }, 200)
+      } catch (e: any) {
+        console.error("Failed to fetch company products:", e)
+        return jsonResponse({ error: "Unable to fetch products" }, 500)
+      }
+    }
 
-//     // 1️⃣ Try to find an existing in-progress thread
-//     const { data: thread, error: threadErr } = await supabase
-//       .from("product_threads")
-//       .select("*")
-//       .eq("product_id", product_id)
-//       .eq("status", "in_progress")
-//       .maybeSingle()
+    if (!product_id) {
+      return jsonResponse({ error: "Missing product_id" }, 400)
+    }
 
-//     if (threadErr) throw threadErr
+    // 1️⃣ Try to find an existing in-progress thread
+    const { data: thread, error: threadErr } = await supabase
+      .from("product_threads")
+      .select("*")
+      .eq("product_id", product_id)
+      .eq("status", "in_progress")
+      .maybeSingle()
 
-//     // 2️⃣ If no thread → create a new one
-//     if (!thread) {
-//       const { data: product, error: productErr } = await supabase
-//         .from("products")
-//         .select("name, description")
-//         .eq("id", product_id)
-//         .single()
+    if (threadErr) throw threadErr
 
-//       if (productErr || !product) {
-//         return jsonResponse({ error: "Product not found" }, 404)
-//       }
+    // 2️⃣ If no thread → create a new one
+    if (!thread) {
+      const { data: product, error: productErr } = await supabase
+        .from("products")
+        .select("name, description")
+        .eq("id", product_id)
+        .single()
 
-//       const query = product.name
+      if (productErr || !product) {
+        return jsonResponse({ error: "Product not found" }, 404)
+      }
 
-//       // 🧠 Fetch Reddit + YouTube data concurrently
-//       const [redditData, youtubeData] = await Promise.allSettled([
-//         callMCP("reddiy_scrape", {
-//           reddit_url: `https://www.reddit.com/search/?q=${encodeURIComponent(query)}`,
-//         }),
-//         callMCP("youtube_search", { query, maxResults: 3 }),
-//       ])
+      const query = product.name
 
-//       const redditText =
-//         redditData.status === "fulfilled" ? redditData.value.slice(0, 1000) : "No Reddit data."
-//       const youtubeText =
-//         youtubeData.status === "fulfilled" ? youtubeData.value.slice(0, 1000) : "No YouTube data."
+      // 🧠 Fetch Reddit + YouTube data concurrently
+      const [redditData, youtubeData] = await Promise.allSettled([
+        callMCP("reddiy_scrape", {
+          reddit_url: `https://www.reddit.com/search/?q=${encodeURIComponent(query)}`,
+        }),
+        callMCP("youtube_search", { query, maxResults: 3 }),
+      ])
 
-//       // 🧠 Gemini prompt to generate AI questions
-//       const prompt = `
-// You're an AI helping retailers understand product demand trends.
-// Analyze the following insights and generate 3–5 questions that help uncover user demand for this product.
+      const redditText =
+        redditData.status === "fulfilled" ? redditData.value.slice(0, 1000) : "No Reddit data."
+      const youtubeText =
+        youtubeData.status === "fulfilled" ? youtubeData.value.slice(0, 1000) : "No YouTube data."
 
-// Product: ${product.name}
-// Description: ${product.description || "N/A"}
+      // 🧠 Gemini prompt to generate AI questions
+      const prompt = `
+You're an AI helping retailers understand product demand trends.
+Analyze the following insights and generate 3–5 questions that help uncover user demand for this product.
 
-// Reddit discussions:
-// ${redditText}
+Product: ${product.name}
+Description: ${product.description || "N/A"}
 
-// YouTube content:
-// ${youtubeText}
+Reddit discussions:
+${redditText}
 
-// Return a JSON response like:
-// {"questions": ["question1", "question2", "question3", ...]}
-// `
-//       const geminiResponse = await callGemini(prompt)
-//       let questions: string[] = []
+YouTube content:
+${youtubeText}
 
-//       try {
-//         questions = JSON.parse(geminiResponse).questions || []
-//       } catch {
-//         questions = geminiResponse
-//           .split("\n")
-//           .map((l: string) => l.trim())
-//           .filter((l: string) => l.length > 0)
-//           .slice(0, 5)
-//       }
+Return a JSON response like:
+{"questions": ["question1", "question2", "question3", ...]}
+`
+      const geminiResponse = await callGemini(prompt)
+      let questions: string[] = []
 
-//       if (!questions.length) {
-//         throw new Error("Gemini failed to generate questions")
-//       }
+      try {
+        questions = JSON.parse(geminiResponse).questions || []
+      } catch {
+        questions = geminiResponse
+          .split("\n")
+          .map((l: string) => l.trim())
+          .filter((l: string) => l.length > 0)
+          .slice(0, 5)
+      }
 
-//       // 🗂️ Create new thread
-//       const { data: newThread, error: insertErr } = await supabase
-//         .from("product_threads")
-//         .insert({
-//           product_id,
-//           ai_questions: questions,
-//           status: "in_progress",
-//           sources: [
-//             { source: "reddit", url: `https://reddit.com/search?q=${encodeURIComponent(query)}` },
-//             { source: "youtube", url: `https://youtube.com/results?search_query=${encodeURIComponent(query)}` },
-//           ],
-//         })
-//         .select()
-//         .single()
+      if (!questions.length) {
+        throw new Error("Gemini failed to generate questions")
+      }
 
-//       if (insertErr) throw insertErr
+      // 🗂️ Create new thread
+      const { data: newThread, error: insertErr } = await supabase
+        .from("product_threads")
+        .insert({
+          product_id,
+          ai_questions: questions,
+          status: "in_progress",
+          sources: [
+            { source: "reddit", url: `https://reddit.com/search?q=${encodeURIComponent(query)}` },
+            { source: "youtube", url: `https://youtube.com/results?search_query=${encodeURIComponent(query)}` },
+          ],
+        })
+        .select()
+        .single()
 
-//       return jsonResponse({
-//         message: "🧠 New thread created",
-//         next_question: questions[0],
-//         remaining: questions.length - 1,
-//         thread: newThread,
-//       })
-//     }
+      if (insertErr) throw insertErr
 
-//     // 3️⃣ Continue existing thread
-//     const questions = thread.ai_questions
-//     const answers = thread.user_answers || []
+      return jsonResponse({
+        message: "🧠 New thread created",
+        next_question: questions[0],
+        remaining: questions.length - 1,
+        thread: newThread,
+      })
+    }
 
-//     // Add the new user answer
-//     if (user_answer) answers.push(user_answer)
+    // 3️⃣ Continue existing thread
+    const questions = thread.ai_questions
+    const answers = thread.user_answers || []
 
-//     // 4️⃣ Still questions left → continue
-//     if (answers.length < questions.length) {
-//       const nextQuestion = questions[answers.length]
-//       await supabase
-//         .from("product_threads")
-//         .update({ user_answers: answers })
-//         .eq("id", thread.id)
+    // Add the new user answer
+    if (user_answer) answers.push(user_answer)
 
-//       return jsonResponse({
-//         message: "✅ Answer saved",
-//         next_question: nextQuestion,
-//         remaining: questions.length - answers.length,
-//       })
-//     }
+    // 4️⃣ Still questions left → continue
+    if (answers.length < questions.length) {
+      const nextQuestion = questions[answers.length]
+      await supabase
+        .from("product_threads")
+        .update({ user_answers: answers })
+        .eq("id", thread.id)
 
-//     // 5️⃣ All questions answered → generate final demand path
-//     const finalPrompt = `
-// You are an AI retail strategist.
-// Based on these Q&A responses, summarize a clear 3-step "Demand Path" to help the retailer act on customer demand.
+      return jsonResponse({
+        message: "✅ Answer saved",
+        next_question: nextQuestion,
+        remaining: questions.length - answers.length,
+      })
+    }
 
-// Questions: ${JSON.stringify(questions)}
-// Answers: ${JSON.stringify(answers)}
+    // 5️⃣ All questions answered → generate final demand path
+    const finalPrompt = `
+You are an AI retail strategist.
+Based on these Q&A responses, summarize a clear 3-step "Demand Path" to help the retailer act on customer demand.
 
-// Each step should be short and actionable.
-// Return plain text only.
-// `
-//     const demandPath = await callGemini(finalPrompt)
+Questions: ${JSON.stringify(questions)}
+Answers: ${JSON.stringify(answers)}
 
-//     await supabase
-//       .from("product_threads")
-//       .update({
-//         user_answers: answers,
-//         ai_generated_path: demandPath,
-//         status: "completed",
-//       })
-//       .eq("id", thread.id)
+Each step should be short and actionable.
+Return plain text only.
+`
+    const demandPath = await callGemini(finalPrompt)
 
-//     return jsonResponse({
-//       message: "✅ Demand Path generated successfully",
-//       demand_path: demandPath,
-//       sources: thread.sources,
-//     })
-//   } catch (err: any) {
-//     console.error("❌ Error in /analyze-demand:", err)
-//     return jsonResponse({ error: err.message || "Server error occurred" }, 500)
-//   }
-// }
+    await supabase
+      .from("product_threads")
+      .update({
+        user_answers: answers,
+        ai_generated_path: demandPath,
+        status: "completed",
+      })
+      .eq("id", thread.id)
+
+    return jsonResponse({
+      message: "✅ Demand Path generated successfully",
+      demand_path: demandPath,
+      sources: thread.sources,
+    })
+  } catch (err: any) {
+    console.error("❌ Error in /analyze-demand:", err)
+    return jsonResponse({ error: err.message || "Server error occurred" }, 500)
+  }
+}

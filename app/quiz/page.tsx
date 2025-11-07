@@ -9,6 +9,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Send, MessageCircle, CheckCircle, Clock, Save } from "lucide-react";
+import { axiosClient } from "@/lib/axiosClient";
+
+// --- Simple product type for dropdown ---
+type ProdOption = { id: string; name: string };
 
 // --- Types ---
 type Message = {
@@ -24,34 +28,61 @@ type ConversationStep = {
 };
 
 // --- Conversation Data ---
-// This hardcoded data simulates the AI's conversation flow
+// This flow focuses on finance / ERP / POS product listings (watches, shoes, etc.)
 const conversationFlow: ConversationStep[] = [
   {
     step: 0,
     question:
-      "Hi there. I'm Leeco, your personal learning companion. I can help you create a roadmap for anything you want to learn. What do you want to learn?",
+      "Hi — I'm Leeco. I can help analyze demand for your POS/ERP product listings. Which product category should we analyze?",
     replies: [
-      "Data Structures & Algorithms",
-      "AI Agent Development",
-      "Full Stack Development",
-      "Data Science",
-      "Backend Development",
-      "Frontend Development",
-      "Cybersecurity",
-      "Cloud Computing",
+      "Watches",
+      "Shoes",
+      "Apparel",
+      "Electronics",
+      "Accessories",
+      "Home & Kitchen",
+      "Grocery",
+      "Sports & Outdoors",
+      "Other",
     ],
   },
   {
     step: 1,
-    question:
-      "Great choice! Next, could you tell me your current knowledge level in this area? This helps me customize the roadmap to your needs.",
-    replies: ["Beginner", "Intermediate", "Advanced"],
+    question: "Which sales channels are most important for this product?",
+    replies: [
+      "In‑store POS",
+      "Online store",
+      "Marketplaces (Amazon / eBay)",
+      "Wholesale / Distributors",
+      "Omnichannel",
+    ],
   },
   {
     step: 2,
-    question:
-      "Perfect! Last question: What is your preferred timeline to complete your full learning? Choose from 1 week, 1 month, 3 months, 6 months, or 6+ months. This helps set a realistic pace.",
-    replies: ["1 week", "1 month", "3 months", "6 months", "6+ months"],
+    question: "What's the typical price range or current SKU price?",
+    replies: ["<$50", "$50‑$150", "$150‑$300", "$300+", "Variable / Multiple SKUs"],
+  },
+  {
+    step: 3,
+    question: "What is your primary business objective for this product?",
+    replies: [
+      "Increase price / margin",
+      "Clear inventory",
+      "Grow market share",
+      "Introduce promotions",
+      "Bundle / cross‑sell",
+    ],
+  },
+  {
+    step: 4,
+    question: "Which timeframe should the demand roadmap focus on?",
+    replies: [
+      "Next 1 month",
+      "Quarter (3 months)",
+      "6 months",
+      "Seasonal (e.g. Holidays)",
+      "Year‑round",
+    ],
   },
 ];
 
@@ -66,6 +97,17 @@ export default function Home() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Demand analysis states
+  const [productIdInput, setProductIdInput] = useState<string>("");
+  const [products, setProducts] = useState<ProdOption[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [demandQuestion, setDemandQuestion] = useState<string | null>(null);
+  const [demandAnswers, setDemandAnswers] = useState<string[]>([]);
+  const [demandLoading, setDemandLoading] = useState(false);
+  const [demandPath, setDemandPath] = useState<string | null>(null);
+  const [demandSources, setDemandSources] = useState<any[] | null>(null);
+  const [threadInfo, setThreadInfo] = useState<any | null>(null);
+
   // --- Effects ---
   // Start the conversation with the first AI message
   useEffect(() => {
@@ -76,6 +118,30 @@ export default function Home() {
         text: conversationFlow[0].question,
       },
     ]);
+
+    // Fetch products for dropdown (initial load)
+    (async function fetchProducts() {
+      try {
+        console.log("Fetching products for demand analysis...");
+        const resp = await axiosClient.get("/company/getProducts");
+        const data = resp?.data;
+        const list: any[] = data?.products ?? data?.products ?? data?.products ?? [];
+
+        // normalize to id/name
+        const opts: ProdOption[] =
+          Array.isArray(list) && list.length > 0
+            ? list.map((p: any) => ({ id: p.id, name: p.name ?? p.id }))
+            : [];
+
+        setProducts(opts);
+        if (opts.length > 0) {
+          setSelectedProductId(opts[0].id);
+          setProductIdInput(opts[0].id);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch products for dropdown", err);
+      }
+    })();
   }, []);
 
   // Smooth scroll to bottom when new messages are added
@@ -176,6 +242,83 @@ export default function Home() {
     }, 1500); // 1.5 second delay to simulate thinking
   };
 
+  // --- Demand analysis API helpers ---
+  async function startDemandAnalysis() {
+    if (!productIdInput.trim()) return alert("Enter product id");
+    setDemandLoading(true);
+    setDemandQuestion(null);
+    setDemandPath(null);
+    setDemandSources(null);
+    setDemandAnswers([]);
+    try {
+      console.log("Starting demand analysis for:", productIdInput);
+      const resp = await axiosClient.post("/api/analyze-demand", {
+        product_id: productIdInput,
+      });
+      console.log("analyze-demand response:", resp?.data);
+      const data = resp?.data;
+      setThreadInfo(data.thread ?? null);
+      if (data?.next_question) {
+        setDemandQuestion(data.next_question);
+      } else if (data?.demand_path) {
+        setDemandPath(data.demand_path);
+        setDemandSources(data.sources ?? null);
+      } else if (data?.thread && data.thread.next_question) {
+        setDemandQuestion(data.thread.next_question);
+      }
+    } catch (err: any) {
+      console.error("startDemandAnalysis error:", err?.response ?? err);
+      alert(err?.response?.data?.error || err?.message || "Failed to start analysis");
+    } finally {
+      setDemandLoading(false);
+    }
+  }
+
+  async function submitDemandAnswer(answer: string) {
+    if (!productIdInput.trim()) return;
+    setDemandLoading(true);
+    try {
+      console.log("Submitting answer:", answer);
+      const resp = await axiosClient.post("/api/analyze-demand", {
+        product_id: productIdInput,
+        user_answer: answer,
+      });
+      console.log("answer response:", resp?.data);
+      const data = resp?.data;
+      // If more questions remain
+      if (data?.next_question) {
+        setDemandAnswers((s) => [...s, answer]);
+        setDemandQuestion(data.next_question);
+      } else if (data?.demand_path) {
+        setDemandAnswers((s) => [...s, answer]);
+        setDemandPath(data.demand_path);
+        setDemandSources(data.sources ?? null);
+        setDemandQuestion(null);
+      } else {
+        // fallback: check thread
+        if (data?.thread && data.thread.status === "completed") {
+          setDemandPath(data.thread.ai_generated_path ?? null);
+          setDemandSources(data.thread.sources ?? null);
+          setDemandQuestion(null);
+        }
+      }
+    } catch (err: any) {
+      console.error("submitDemandAnswer error:", err?.response ?? err);
+      alert(err?.response?.data?.error || err?.message || "Failed to submit answer");
+    } finally {
+      setDemandLoading(false);
+    }
+  }
+
+  // Simple UI handler for submitting text answer
+  const [answerInput, setAnswerInput] = useState("");
+  const handleAnswerSubmit = async () => {
+    const a = answerInput.trim();
+    if (!a) return;
+    await submitDemandAnswer(a);
+    setAnswerInput("");
+  };
+
   // --- Render Function ---
   const currentReplies = conversationFlow[currentStep]?.replies || [];
 
@@ -194,6 +337,27 @@ export default function Home() {
               <p className="text-sm text-gray-500">Leeco - Your personal learning companion</p>
             </div>
           </div>
+         <div className="ml-auto flex items-center gap-3">
+           {/* product dropdown */}
+           <select
+             value={selectedProductId}
+             onChange={(e) => {
+               setSelectedProductId(e.target.value);
+               setProductIdInput(e.target.value); // keep existing logic happy
+             }}
+             className="text-sm border rounded px-3 py-1 bg-white"
+           >
+             {products.length === 0 && <option value="">Select product...</option>}
+             {products.map((p) => (
+               <option key={p.id} value={p.id}>
+                 {p.name}
+               </option>
+             ))}
+           </select>
+           <Button onClick={startDemandAnalysis} size="sm" disabled={demandLoading || !productIdInput}>
+             {demandLoading ? "Starting..." : "Analyze Demand"}
+           </Button>
+         </div>
         </div>
 
         {/* Chat Messages Container - Fixed height with proper scrolling */}
@@ -257,6 +421,57 @@ export default function Home() {
 
             {/* Scroll anchor - positioned at the very bottom */}
             <div ref={chatEndRef} className="h-1" />
+          </div>
+        </div>
+
+        {/* Demand Analysis Panel (fixed bottom area) */}
+        <div className="border-t border-gray-200 bg-white shrink-0 p-4">
+          <div className="max-w-4xl mx-auto space-y-3">
+            {demandQuestion && (
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                <div className="text-sm font-medium">Demand Analysis Question</div>
+                <div className="mt-2 text-sm">{demandQuestion}</div>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    value={answerInput}
+                    onChange={(e) => setAnswerInput(e.target.value)}
+                    placeholder="Type your answer..."
+                    className="flex-1 border rounded px-3 py-2 text-sm"
+                  />
+                  <Button onClick={handleAnswerSubmit} disabled={demandLoading || !answerInput.trim()}>
+                    {demandLoading ? "Sending..." : "Send"}
+                  </Button>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Answers so far: {demandAnswers.length}
+                </div>
+              </div>
+            )}
+
+            {demandPath && (
+              <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                <div className="text-sm font-medium">Business Roadmap (Demand Path)</div>
+                <pre className="mt-2 text-sm whitespace-pre-wrap">{String(demandPath)}</pre>
+                <div className="mt-3 text-sm font-medium">Sources</div>
+                <div className="mt-2 space-y-2">
+                  {Array.isArray(demandSources) && demandSources.length > 0 ? (
+                    demandSources.map((s: any, idx: number) => (
+                      <div key={idx} className="text-sm">
+                        <a href={s.url || "#"} target="_blank" rel="noreferrer" className="text-primary underline">
+                          {s.source || s.title || s.url}
+                        </a>
+                        {s.url && <div className="text-xs text-muted-foreground">{s.url}</div>}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground">No sources provided.</div>
+                  )}
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  (Console logs include full API responses.)
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
