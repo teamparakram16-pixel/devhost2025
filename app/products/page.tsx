@@ -20,16 +20,6 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Package,
-  Send,
-  DollarSign,
-  Star,
-  CheckCircle,
-  Sparkles,
-  Image as ImageIcon,
-  Tag,
-} from "lucide-react";
 import { axiosClient } from "@/lib/axiosClient";
 
 interface Product {
@@ -507,7 +497,7 @@ export default function ProductsPage() {
                           </h3>
                           <p className="text-sm text-muted-foreground mb-4">
                             Use natural language prompts to request changes to
-                            this product's details, pricing, or specifications.
+                            this products details, pricing, or specifications.
                           </p>
                           <div className="space-y-3">
                             <Label
