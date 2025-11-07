@@ -4,16 +4,16 @@ export async function GET() {
   try {
     const supabase = await createClient();
 
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.getSession();
+    const { data: userData, error: sessionError } =
+      await supabase.auth.getUser();
 
-    if (sessionError || !sessionData.session) {
+    if (sessionError || !userData.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
       });
     }
 
-    const user = sessionData.session.user;
+    const user = userData.user;
     const userId = user.id;
 
     const { data: company, error: companyError } = await supabase
@@ -43,9 +43,9 @@ export async function GET() {
         created_at,
         updated_at,
         company_id,
-        image:media!products_image_fkey (id, url, file_name),
-        manufacturing_report:media!products_manufacturing_report_fkey (id, url, file_name),
-        sales_report:media!products_sales_report_fkey (id, url, file_name)
+        image:image (id, url, file_name),
+        manufacturing_report: manufacturing_report (id, url, file_name),
+        sales_report:sales_report (id, url, file_name)
       `
       )
       .eq("company_id", company_id)
