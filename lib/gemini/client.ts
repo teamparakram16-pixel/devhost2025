@@ -12,7 +12,7 @@ export class GeminiMCPClient {
   private model: any;
 
   constructor() {
-    this.gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+    this.gemini = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
     this.model = this.gemini.getGenerativeModel({
       model: "gemini-2.5-flash",
       systemInstruction: `You are  AI Assistant for l Demand Forecasting & Dynamic Pricing. Follow this strict orchestration when a user asks about product evaluation or pricing:
