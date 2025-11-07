@@ -76,260 +76,229 @@ type AnalysisResult = {
 const generateAnalysisForProduct = (productName: string, analysisType: string, timeframe: string): AnalysisResult => {
   const productLower = productName.toLowerCase();
 
-  // Base analysis data
-  let baseData = {
-    trustScore: 75,
-    demandLevel: "Medium",
-    priceRecommendation: { current: 100, suggested: 95, confidence: 78 },
-    reviews: {
-      total: 500,
-      averageRating: 4.0,
-      sentiment: "Positive"
-    },
-    sources: [] as any[],
-    marketInsights: {
-      seasonalDemand: "Consistent year-round",
-      competitorPricing: "Competitive market positioning",
-      regionalVariations: "Minimal regional differences"
-    }
-  };
+  // Extract key characteristics from product name
+  const isPremium = productLower.includes('pro') || productLower.includes('premium') || productLower.includes('ultra') || productLower.includes('max');
+  const isWireless = productLower.includes('wireless') || productLower.includes('bluetooth') || productLower.includes('air');
+  const isGaming = productLower.includes('gaming') || productLower.includes('gamer') || productLower.includes('rgb');
+  const isFitness = productLower.includes('fitness') || productLower.includes('sport') || productLower.includes('running');
+  const isBudget = productLower.includes('budget') || productLower.includes('basic') || productLower.includes('mini');
 
-  // Customize based on product type
-  if (productLower.includes('coffee') || productLower.includes('maker') || productLower.includes('espresso')) {
-    baseData = {
-      trustScore: 87,
-      demandLevel: "High",
-      priceRecommendation: { current: 299, suggested: 279, confidence: 92 },
-      reviews: {
-        total: 1247,
-        averageRating: 4.3,
-        sentiment: "Positive"
-      },
-      sources: [
-        {
-          platform: "YouTube",
-          title: `${productName} Review 2024 - Worth the Investment?`,
-          views: "125K",
-          sentiment: "Positive",
-          url: "https://youtube.com/results?search_query=" + encodeURIComponent(productName + " review")
-        },
-        {
-          platform: "Reddit",
-          title: "r/Coffee - Best coffee makers under $300",
-          upvotes: 342,
-          comments: 89,
-          sentiment: "Positive",
-          url: "https://reddit.com/r/Coffee"
-        },
-        {
-          platform: "Amazon",
-          title: "Customer reviews summary",
-          rating: 4.2,
-          totalReviews: 856,
-          sentiment: "Mixed",
-          url: "https://amazon.com/s?k=" + encodeURIComponent(productName)
-        }
-      ],
-      marketInsights: {
-        seasonalDemand: "High in Q4",
-        competitorPricing: "Average market price: $289",
-        regionalVariations: "15% higher in urban areas"
-      }
-    };
-  } else if (productLower.includes('headphone') || productLower.includes('earphone') || productLower.includes('audio')) {
-    baseData = {
-      trustScore: 91,
-      demandLevel: "Very High",
-      priceRecommendation: { current: 199, suggested: 189, confidence: 88 },
-      reviews: {
-        total: 2156,
-        averageRating: 4.5,
-        sentiment: "Very Positive"
-      },
-      sources: [
-        {
-          platform: "YouTube",
-          title: `${productName} 2024 - Ultimate Comparison`,
-          views: "890K",
-          sentiment: "Positive",
-          url: "https://youtube.com/results?search_query=" + encodeURIComponent(productName + " review")
-        },
-        {
-          platform: "Reddit",
-          title: "r/Gaming - Best wireless headphones for gaming",
-          upvotes: 567,
-          comments: 134,
-          sentiment: "Positive",
-          url: "https://reddit.com/r/Gaming"
-        },
-        {
-          platform: "BestBuy",
-          title: "Customer reviews and ratings",
-          rating: 4.4,
-          totalReviews: 423,
-          sentiment: "Positive",
-          url: "https://bestbuy.com/site/searchpage.jsp?st=" + encodeURIComponent(productName)
-        }
-      ],
-      marketInsights: {
-        seasonalDemand: "Consistent year-round",
-        competitorPricing: "Competitive market positioning",
-        regionalVariations: "8% higher in tech hubs"
-      }
-    };
-  } else if (productLower.includes('watch') || productLower.includes('fitness') || productLower.includes('smart')) {
-    baseData = {
-      trustScore: 85,
-      demandLevel: "High",
-      priceRecommendation: { current: 349, suggested: 329, confidence: 85 },
-      reviews: {
-        total: 1834,
-        averageRating: 4.1,
-        sentiment: "Positive"
-      },
-      sources: [
-        {
-          platform: "YouTube",
-          title: `${productName} Review - Fitness Tracking Deep Dive`,
-          views: "456K",
-          sentiment: "Mixed",
-          url: "https://youtube.com/results?search_query=" + encodeURIComponent(productName + " review")
-        },
-        {
-          platform: "Reddit",
-          title: "r/Fitness - Smart watch recommendations",
-          upvotes: 234,
-          comments: 67,
-          sentiment: "Positive",
-          url: "https://reddit.com/r/Fitness"
-        },
-        {
-          platform: "Target",
-          title: "Customer feedback summary",
-          rating: 4.0,
-          totalReviews: 312,
-          sentiment: "Positive",
-          url: "https://target.com/s/" + encodeURIComponent(productName)
-        }
-      ],
-      marketInsights: {
-        seasonalDemand: "Peak in Q1 (New Year resolutions)",
-        competitorPricing: "Premium positioning maintained",
-        regionalVariations: "12% higher in fitness-focused regions"
-      }
-    };
-  } else if (productLower.includes('skincare') || productLower.includes('beauty') || productLower.includes('cosmetic')) {
-    baseData = {
-      trustScore: 78,
-      demandLevel: "Medium",
-      priceRecommendation: { current: 89, suggested: 94, confidence: 76 },
-      reviews: {
-        total: 756,
-        averageRating: 4.0,
-        sentiment: "Positive"
-      },
-      sources: [
-        {
-          platform: "YouTube",
-          title: `${productName} Routine - Honest Review`,
-          views: "78K",
-          sentiment: "Positive",
-          url: "https://youtube.com/results?search_query=" + encodeURIComponent(productName + " review")
-        },
-        {
-          platform: "Reddit",
-          title: "r/Skincare - Organic skincare recommendations",
-          upvotes: 189,
-          comments: 45,
-          sentiment: "Mixed",
-          url: "https://reddit.com/r/Skincare"
-        },
-        {
-          platform: "Sephora",
-          title: "Beauty product reviews",
-          rating: 3.9,
-          totalReviews: 234,
-          sentiment: "Positive",
-          url: "https://sephora.com/search?keyword=" + encodeURIComponent(productName)
-        }
-      ],
-      marketInsights: {
-        seasonalDemand: "Higher in spring/summer",
-        competitorPricing: "Value-driven positioning",
-        regionalVariations: "10% higher in urban wellness markets"
-      }
-    };
-  } else if (productLower.includes('chair') || productLower.includes('furniture') || productLower.includes('office')) {
-    baseData = {
-      trustScore: 82,
-      demandLevel: "Medium-High",
-      priceRecommendation: { current: 499, suggested: 479, confidence: 81 },
-      reviews: {
-        total: 945,
-        averageRating: 4.2,
-        sentiment: "Positive"
-      },
-      sources: [
-        {
-          platform: "YouTube",
-          title: `${productName} Review - Office Setup Guide`,
-          views: "234K",
-          sentiment: "Positive",
-          url: "https://youtube.com/results?search_query=" + encodeURIComponent(productName + " review")
-        },
-        {
-          platform: "Reddit",
-          title: "r/Ergonomics - Best office chairs for home office",
-          upvotes: 456,
-          comments: 123,
-          sentiment: "Positive",
-          url: "https://reddit.com/r/Ergonomics"
-        },
-        {
-          platform: "IKEA",
-          title: "Furniture reviews and ratings",
-          rating: 4.1,
-          totalReviews: 567,
-          sentiment: "Positive",
-          url: "https://ikea.com/us/en/search/?q=" + encodeURIComponent(productName)
-        }
-      ],
-      marketInsights: {
-        seasonalDemand: "Higher during work-from-home trends",
-        competitorPricing: "Premium comfort positioning",
-        regionalVariations: "18% higher in business districts"
-      }
-    };
-  } else {
-    // Generic product analysis
-    baseData.sources = [
-      {
-        platform: "YouTube",
-        title: `${productName} Review and Comparison`,
-        views: "67K",
-        sentiment: "Positive",
-        url: "https://youtube.com/results?search_query=" + encodeURIComponent(productName + " review")
-      },
-      {
-        platform: "Reddit",
-        title: `Product recommendations for ${productName}`,
-        upvotes: 123,
-        comments: 45,
-        sentiment: "Mixed",
-        url: "https://reddit.com/search/?q=" + encodeURIComponent(productName)
-      },
-      {
-        platform: "Amazon",
-        title: "Customer reviews and ratings",
-        rating: 4.0,
-        totalReviews: 234,
-        sentiment: "Positive",
-        url: "https://amazon.com/s?k=" + encodeURIComponent(productName)
-      }
-    ];
+  // Base pricing calculation based on product type
+  let basePrice = 100;
+  let priceMultiplier = 1;
+
+  if (productLower.includes('phone') || productLower.includes('smartphone')) {
+    basePrice = 699;
+    priceMultiplier = isPremium ? 1.8 : isBudget ? 0.6 : 1.2;
+  } else if (productLower.includes('laptop') || productLower.includes('computer')) {
+    basePrice = 899;
+    priceMultiplier = isPremium ? 2.2 : isBudget ? 0.5 : 1.0;
+  } else if (productLower.includes('headphone') || productLower.includes('earphone')) {
+    basePrice = 149;
+    priceMultiplier = isPremium ? 2.5 : isWireless ? 1.8 : 0.8;
+  } else if (productLower.includes('watch') || productLower.includes('smartwatch')) {
+    basePrice = 299;
+    priceMultiplier = isPremium ? 1.6 : isFitness ? 1.2 : 0.9;
+  } else if (productLower.includes('speaker') || productLower.includes('soundbar')) {
+    basePrice = 199;
+    priceMultiplier = isPremium ? 2.0 : isWireless ? 1.5 : 0.7;
+  } else if (productLower.includes('camera') || productLower.includes('dslr')) {
+    basePrice = 599;
+    priceMultiplier = isPremium ? 2.5 : 1.0;
+  } else if (productLower.includes('tablet') || productLower.includes('ipad')) {
+    basePrice = 399;
+    priceMultiplier = isPremium ? 1.8 : 0.8;
+  } else if (productLower.includes('gaming') || productLower.includes('console')) {
+    basePrice = 499;
+    priceMultiplier = isPremium ? 1.6 : 0.9;
+  } else if (productLower.includes('skincare') || productLower.includes('cosmetic')) {
+    basePrice = 45;
+    priceMultiplier = isPremium ? 3.0 : 1.0;
+  } else if (productLower.includes('coffee') || productLower.includes('maker')) {
+    basePrice = 129;
+    priceMultiplier = isPremium ? 2.2 : 0.8;
+  } else if (productLower.includes('chair') || productLower.includes('furniture')) {
+    basePrice = 349;
+    priceMultiplier = isPremium ? 2.0 : 0.7;
   }
 
-  return baseData;
+  const currentPrice = Math.round(basePrice * priceMultiplier);
+  const suggestedPrice = Math.round(currentPrice * (0.92 + Math.random() * 0.16)); // ±8% variation
+
+  // Calculate trust score based on product characteristics
+  let trustScore = 75 + Math.random() * 20; // Base 75-95
+  if (isPremium) trustScore += 5;
+  if (isWireless) trustScore += 3;
+  if (productLower.includes('apple') || productLower.includes('sony') || productLower.includes('bose')) trustScore += 8;
+  trustScore = Math.min(98, Math.round(trustScore));
+
+  // Determine demand level based on product type and characteristics
+  let demandLevel = "Medium";
+  if (isGaming || isWireless || productLower.includes('smart') || productLower.includes('ai')) {
+    demandLevel = "High";
+  }
+  if (isPremium || productLower.includes('pro') || productLower.includes('professional')) {
+    demandLevel = "Very High";
+  }
+  if (isBudget || productLower.includes('basic') || productLower.includes('entry')) {
+    demandLevel = "Medium-Low";
+  }
+
+  // Adjust for timeframe
+  const timeframeMultiplier = {
+    '1week': 0.8,
+    '1month': 0.9,
+    '3months': 1.0,
+    '6months': 1.1,
+    '1year': 1.2
+  }[timeframe] || 1.0;
+
+  // Generate realistic review data
+  const reviewBase = Math.floor(currentPrice / 10) + 50; // Base reviews scale with price
+  const totalReviews = Math.round(reviewBase * (0.5 + Math.random() * 1.5) * timeframeMultiplier);
+  const averageRating = 3.8 + Math.random() * 1.2; // 3.8-5.0 range
+  const sentiment = averageRating >= 4.5 ? "Very Positive" : averageRating >= 4.0 ? "Positive" : averageRating >= 3.5 ? "Mixed" : "Negative";
+
+  // Generate product-specific sources
+  const sources = [];
+
+  // YouTube source
+  const youtubeTitles = [
+    `${productName} Review 2024 - Is it Worth Buying?`,
+    `${productName} Honest Review - ${Math.round(Math.random() * 50 + 50)} Hours Later`,
+    `${productName} vs Competitors - Which Should You Buy?`,
+    `${productName} Deep Dive - Features & Performance`,
+    `${productName} Unboxing & First Impressions`
+  ];
+  const youtubeTitle = youtubeTitles[Math.floor(Math.random() * youtubeTitles.length)];
+  const youtubeViews = Math.round((50 + Math.random() * 950) * 1000);
+  sources.push({
+    platform: "YouTube",
+    title: youtubeTitle,
+    views: youtubeViews.toLocaleString() + (youtubeViews > 1000 ? 'K' : ''),
+    sentiment: Math.random() > 0.3 ? "Positive" : "Mixed",
+    url: `https://youtube.com/results?search_query=${encodeURIComponent(productName + " review")}`
+  });
+
+  // Reddit source
+  const redditCommunities = {
+    headphones: "r/Headphones",
+    gaming: "r/Gaming",
+    fitness: "r/Fitness",
+    skincare: "r/Skincare",
+    coffee: "r/Coffee",
+    photography: "r/Photography",
+    technology: "r/Technology",
+    default: "r/Products"
+  };
+
+  let redditCommunity = redditCommunities.default;
+  if (productLower.includes('headphone') || productLower.includes('audio')) redditCommunity = redditCommunities.headphones;
+  else if (isGaming) redditCommunity = redditCommunities.gaming;
+  else if (isFitness) redditCommunity = redditCommunities.fitness;
+  else if (productLower.includes('skincare') || productLower.includes('beauty')) redditCommunity = redditCommunities.skincare;
+  else if (productLower.includes('coffee')) redditCommunity = redditCommunities.coffee;
+  else if (productLower.includes('camera')) redditCommunity = redditCommunities.photography;
+  else if (productLower.includes('phone') || productLower.includes('laptop') || productLower.includes('tech')) redditCommunity = redditCommunities.technology;
+
+  const redditTitles = [
+    `Best ${productName} recommendations`,
+    `${productName} vs alternatives - worth the price?`,
+    `My experience with ${productName} after ${Math.floor(Math.random() * 12 + 1)} months`,
+    `${productName} review - pros and cons`,
+    `Is ${productName} still worth buying in 2024?`
+  ];
+  const redditTitle = redditTitles[Math.floor(Math.random() * redditTitles.length)];
+
+  sources.push({
+    platform: "Reddit",
+    title: redditTitle,
+    upvotes: Math.floor(50 + Math.random() * 500),
+    comments: Math.floor(20 + Math.random() * 200),
+    sentiment: Math.random() > 0.4 ? "Positive" : Math.random() > 0.2 ? "Mixed" : "Negative",
+    url: `https://reddit.com/${redditCommunity}`
+  });
+
+  // Retailer source
+  const retailers = [
+    { name: "Amazon", domain: "amazon.com", search: "s?k=" },
+    { name: "Best Buy", domain: "bestbuy.com", search: "site/searchpage.jsp?st=" },
+    { name: "Target", domain: "target.com", search: "s/" },
+    { name: "Walmart", domain: "walmart.com", search: "search?q=" },
+    { name: "Costco", domain: "costco.com", search: "CatalogSearch?dept=All&keyword=" }
+  ];
+
+  if (productLower.includes('skincare') || productLower.includes('beauty') || productLower.includes('cosmetic')) {
+    retailers.unshift({ name: "Sephora", domain: "sephora.com", search: "search?keyword=" });
+  } else if (productLower.includes('furniture') || productLower.includes('chair')) {
+    retailers.unshift({ name: "IKEA", domain: "ikea.com", search: "us/en/search/?q=" });
+  }
+
+  const retailer = retailers[Math.floor(Math.random() * retailers.length)];
+  sources.push({
+    platform: retailer.name,
+    title: "Customer reviews and ratings",
+    rating: Math.round((averageRating - 0.1 + Math.random() * 0.2) * 10) / 10,
+    totalReviews: Math.round(totalReviews * (0.3 + Math.random() * 0.4)),
+    sentiment: sentiment,
+    url: `https://${retailer.domain}/${retailer.search}${encodeURIComponent(productName)}`
+  });
+
+  // Generate market insights based on product type
+  const seasonalPatterns = {
+    headphones: "Consistent year-round with slight Q4 increase",
+    gaming: "Peak during holiday seasons and major game releases",
+    fitness: "Strong Q1 (New Year) and Q3-Q4 peaks",
+    skincare: "Higher in spring/summer, peaks during holiday gifting",
+    coffee: "Consistent with slight morning/weekend peaks",
+    technology: "Major peaks during back-to-school and holidays",
+    furniture: "Higher during seasonal home improvements",
+    default: "Seasonal demand varies by market conditions"
+  };
+
+  let seasonalDemand = seasonalPatterns.default;
+  if (productLower.includes('headphone') || productLower.includes('audio')) seasonalDemand = seasonalPatterns.headphones;
+  else if (isGaming) seasonalDemand = seasonalPatterns.gaming;
+  else if (isFitness) seasonalDemand = seasonalPatterns.fitness;
+  else if (productLower.includes('skincare') || productLower.includes('beauty')) seasonalDemand = seasonalPatterns.skincare;
+  else if (productLower.includes('coffee')) seasonalDemand = seasonalPatterns.coffee;
+  else if (productLower.includes('tech') || productLower.includes('phone') || productLower.includes('laptop')) seasonalDemand = seasonalPatterns.technology;
+  else if (productLower.includes('furniture') || productLower.includes('chair')) seasonalDemand = seasonalPatterns.furniture;
+
+  const competitorPricing = isPremium ?
+    "Premium positioning with luxury branding" :
+    isBudget ?
+    "Value-driven with competitive low pricing" :
+    "Mid-range market positioning";
+
+  const regionalVariations = [
+    "8-12% higher in urban tech hubs",
+    "15% higher in coastal metropolitan areas",
+    "10% premium in international markets",
+    "Regional pricing varies by 5-15%",
+    "Consistent pricing across major markets"
+  ][Math.floor(Math.random() * 5)];
+
+  return {
+    trustScore,
+    demandLevel,
+    priceRecommendation: {
+      current: currentPrice,
+      suggested: suggestedPrice,
+      confidence: Math.round(75 + Math.random() * 20)
+    },
+    reviews: {
+      total: totalReviews,
+      averageRating: Math.round(averageRating * 10) / 10,
+      sentiment
+    },
+    sources,
+    marketInsights: {
+      seasonalDemand,
+      competitorPricing,
+      regionalVariations
+    }
+  };
 };
 
 export default function ProductAnalysisChatbot() {
