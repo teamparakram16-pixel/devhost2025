@@ -12,7 +12,9 @@ export class GeminiMCPClient {
   private model: any;
 
   constructor() {
-    this.gemini = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
+    this.gemini = new GoogleGenerativeAI(
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY!
+    );
     this.model = this.gemini.getGenerativeModel({
       model: "gemini-2.5-flash",
       systemInstruction: `You are  AI Assistant for l Demand Forecasting & Dynamic Pricing. Follow this strict orchestration when a user asks about product evaluation or pricing:
@@ -49,9 +51,11 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
   }
 
   async connect() {
+    const isProd = process.env.NEXT_PUBLIC_NODE_ENV === "production";
+
     const transport = new StdioClientTransport({
-      command: "node",
-      args: ["dist/lib/mcp/server.js"], // Build MCP server first
+      command: isProd ? "node" : "tsx",
+      args: [isProd ? "dist/server/mcp-server.js" : "server/mcp-server.ts"],
     });
 
     await this.mcpClient.connect(transport);
@@ -71,6 +75,8 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
 
       const tools = responseData.tools || [];
 
+      console.log("🛠️ Available tools:", JSON.stringify(tools, null, 2));
+
       // Convert MCP tools to Gemini function declarations
       const functionDeclarations = tools.map((tool: any) => ({
         name: tool.name,
@@ -78,9 +84,12 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
         parameters: tool.inputSchema,
       }));
 
+      console.log("Context : ", context);
+
       // Build initial history: include userId and selected productId (if provided)
       const history: any[] = [];
       if (context?.userId) {
+        console.log("User ID:", context.userId);
         history.push({
           role: "user",
           parts: [{ text: `My user ID is: ${context.userId}` }],
@@ -88,6 +97,7 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
       }
 
       if (context?.productId) {
+        console.log("Selected productId:", context.productId);
         history.push({
           role: "user",
           parts: [
@@ -99,26 +109,138 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
       }
 
       // Start chat with function calling enabled; let Gemini decide if/when to call tools
+      // Google Generative API expects the functions key (not "tools")
       const chat = this.model.startChat({
-        tools: functionDeclarations,
+        functions: functionDeclarations,
         history,
       });
 
       // send user's initial message
       let result = await chat.sendMessage(message);
+      console.log(
+        "💬 Gemini initial response (full):",
+        JSON.stringify(result.response?.toJSON?.() ?? result.response, null, 2)
+      );
+
       let response = result.response;
+
+      // Robust normalizer to extract function-calls from multiple SDK shapes.
+      // const getFunctionCalls = (resp: any) => {
+      //   try {
+      //     if (!resp) return [];
+
+      //     // 1) methods that return calls
+      //     if (typeof resp.functionCalls === "function") {
+      //       const out = resp.functionCalls();
+      //       if (Array.isArray(out) && out.length) return out;
+      //     }
+      //     if (typeof resp.functionCall === "function") {
+      //       const single = resp.functionCall();
+      //       if (single) return [single];
+      //     }
+
+      //     // 2) snake_case variants
+      //     if (typeof resp.function_calls === "function") {
+      //       const out = resp.function_calls();
+      //       if (Array.isArray(out) && out.length) return out;
+      //     }
+      //     if (typeof resp.function_call === "function") {
+      //       const single = resp.function_call();
+      //       if (single) return [single];
+      //     }
+
+      //     // 3) direct properties
+      //     if (Array.isArray(resp.functionCalls) && resp.functionCalls.length)
+      //       return resp.functionCalls;
+      //     if (resp.functionCall) return [resp.functionCall];
+      //     if (Array.isArray(resp.function_calls) && resp.function_calls.length)
+      //       return resp.function_calls;
+      //     if (resp.function_call) return [resp.function_call];
+
+      //     // 4) inspect candidates (some SDKs put function call on the chosen candidate)
+      //     if (Array.isArray(resp.candidates) && resp.candidates.length) {
+      //       const extracted = resp.candidates
+      //         .map(
+      //           (c: any) =>
+      //             c.function_call ??
+      //             c.message?.function_call ??
+      //             c.message?.functionCall ??
+      //             c.functionCall
+      //         )
+      //         .filter(Boolean);
+      //       if (extracted.length) return extracted;
+      //     }
+
+      //     // 5) try top-level message variants
+      //     if (resp.message?.function_call) return [resp.message.function_call];
+
+      //     return [];
+      //   } catch (err) {
+      //     console.warn("getFunctionCalls error:", err);
+      //     return [];
+      //   }
+      // };
+
+      const getFunctionCalls = (resp: any) => {
+        try {
+          console.log("getFunctionCalls input:", resp);
+          if (!resp) return [];
+
+          console.log("Trying to extract function calls...");
+
+          // ✅ Try new SDK API first
+          if (typeof resp.functionCalls === "function") {
+            const fc = resp.functionCalls();
+            return Array.isArray(fc) ? fc : [];
+          }
+
+          // ✅ Fallbacks for old SDKs or candidate-based responses
+          if (Array.isArray(resp.functionCalls)) return resp.functionCalls;
+          if (resp.functionCall) return [resp.functionCall];
+          if (Array.isArray(resp.candidates)) {
+            const extracted = resp.candidates
+              .map((c: any) => c.functionCall || c.message?.functionCall)
+              .filter(Boolean);
+            return extracted;
+          }
+
+          return [];
+        } catch (err) {
+          console.warn("getFunctionCalls error:", err);
+          return [];
+        }
+      };
+
+      // debug log shape
+      console.log("🧭 response keys:", Object.keys(response || {}));
+      if (typeof response?.functionCalls === "function")
+        console.log("response.functionCalls is a function");
+      if (typeof response?.functionCall === "function")
+        console.log("response.functionCall is a function");
+      if (response?.candidates)
+        console.log("response.candidates length:", response.candidates.length);
 
       const MAX_TOOL_CALLS = 20;
       let callCount = 0;
       const executedTools = new Set<string>();
 
       // Loop while the model requests tool calls. Each iteration: execute the tool and send the result back.
-      while (response.functionCalls && response.functionCalls.length > 0) {
+      let functionCalls = getFunctionCalls(response);
+
+      console.log(
+        "Initial function calls:",
+        JSON.stringify(functionCalls, null, 2)
+      );
+      while (functionCalls && functionCalls.length > 0) {
+        console.log(
+          "🔄 Processing tool call request...",
+          JSON.stringify(functionCalls, null, 2)
+        );
         if (++callCount > MAX_TOOL_CALLS) {
           throw new Error("Exceeded max tool call iterations");
         }
 
-        const functionCall = response.functionCalls[0];
+        const functionCall = functionCalls[0];
         console.log(
           `🔧 Tool requested: ${functionCall.name}`,
           functionCall.args
@@ -201,6 +323,8 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
         ]);
 
         response = result.response;
+        // recompute functionCalls after model receives the tool response
+        functionCalls = getFunctionCalls(response);
       }
 
       // No more tool calls — return final text (could be the JSON schema)

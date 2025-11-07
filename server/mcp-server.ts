@@ -1,20 +1,19 @@
 import { fetchYouTubeTranscript } from "@/helpers/youtube-video.helpers";
 import { axiosClient } from "@/lib/axiosClient";
+import { createClient } from "@/lib/supabaseServer";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
-  ListResourcesRequestSchema,
   ListToolsRequestSchema,
-  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { createClient } from "@supabase/supabase-js";
+// import { createClient } from "@supabase/supabase-js";
 import * as cheerio from "cheerio";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role for MCP
-);
+// const supabase = createClient(
+//   process.env.NEXT_PUBLIC_SUPABASE_URL!,
+//   process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role for MCP
+// );
 
 // Initialize MCP Server
 const server = new Server(
@@ -162,6 +161,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
   try {
     switch (name) {
       case "fetch_youtube_transcript": {
+        console.log("fetch_youtube_transcript called with args:", args);
         const { video_id } = args as { video_id: string };
         if (!video_id) {
           throw new Error("video_id is required");
@@ -203,6 +203,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
 
       // Add this case in your CallToolRequestSchema handler:
       case "youtube_search": {
+        console.log("youtube_search called with args:", args);
         const { query, maxResults = 5 } = args as {
           query: string;
           maxResults?: number;
@@ -251,6 +252,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
         };
       }
       case "google_search": {
+        console.log("google_search called with args:", args);
         const { query, maxResults = 5 } = args as {
           query: string;
           maxResults?: number;
@@ -279,6 +281,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
       }
 
       case "reddit_scrape": {
+        console.log("reddit_scrape called with args:", args);
         const { reddit_url } = args as { reddit_url: string };
         if (!reddit_url) {
           throw new Error("reddit_url is required");
@@ -316,10 +319,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
         };
       }
       case "fetch_product_details": {
+        console.log("fetch_product_details called with args:", args);
         const { product_id } = args as { product_id: string };
         if (!product_id) {
           throw new Error("product_id is required");
         }
+
+        const supabase = await createClient();
 
         const { data: product, error } = await supabase
           .from("products")
@@ -361,6 +367,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
       }
 
       case "summarize_search_hits": {
+        console.log("summarize_search_hits called with args:", args);
         const {
           query,
           hits,
@@ -398,6 +405,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
       }
 
       case "expand_selected_sources": {
+        console.log("expand_selected_sources called with args:", args);
         const { selections } = args as { selections: any[] };
         if (!Array.isArray(selections))
           throw new Error("selections is required");
@@ -492,66 +500,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
   }
 });
 
-// ✅ RESOURCES: Static content that can be read
-// server.setRequestHandler(ListResourcesRequestSchema, async () => {
-//   return {
-//     resources: [
-//       {
-//         uri: "sahyadriprep://placement-statistics",
-//         name: "Placement Statistics",
-//         description: "Overall placement statistics across all colleges",
-//         mimeType: "application/json",
-//       },
-//       {
-//         uri: "sahyadriprep://top-companies",
-//         name: "Top Companies",
-//         description: "List of top recruiting companies",
-//         mimeType: "application/json",
-//       },
-//     ],
-//   };
-// });
-
-// server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-//   const { uri } = request.params;
-
-//   switch (uri) {
-//     case "sahyadriprep://placement-statistics": {
-//       const { data: colleges } = await supabase.from("colleges").select("*");
-
-//       return {
-//         contents: [
-//           {
-//             uri,
-//             mimeType: "application/json",
-//             text: JSON.stringify(colleges, null, 2),
-//           },
-//         ],
-//       };
-//     }
-
-//     case "sahyadriprep://top-companies": {
-//       const { data: companies } = await supabase
-//         .from("companies")
-//         .select("*")
-//         .order("created_at", { ascending: false })
-//         .limit(50);
-
-//       return {
-//         contents: [
-//           {
-//             uri,
-//             mimeType: "application/json",
-//             text: JSON.stringify(companies, null, 2),
-//           },
-//         ],
-//       };
-//     }
-
-//     default:
-//       throw new Error(`Unknown resource: ${uri}`);
-//   }
-// });
 
 // Start server
 async function main() {
