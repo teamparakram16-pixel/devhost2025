@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GeminiMCPClient } from "@/lib/gemini/client";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabaseServer";
 
 let singletonClient: GeminiMCPClient | null = null;
 let connectPromise: Promise<void> | null = null;
@@ -22,8 +22,8 @@ export async function POST(req: Request) {
     const message: string = payload.message || payload.prompt || "";
     const product_id: string | undefined = payload.product_id || "";
 
+    const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
-
     const user_id = data.user?.id;
 
     if (!user_id) {
@@ -32,7 +32,6 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-
     if (!message) {
       return NextResponse.json(
         { success: false, error: "message is required" },
@@ -40,15 +39,58 @@ export async function POST(req: Request) {
       );
     }
 
-    const client = await getClient();
+    // Attempt chat, retry once if MCP connection was closed
+    let client = await getClient();
+    try {
+      const resultText = await client.chat(message, {
+        userId: user_id,
+        productId: product_id,
+      });
+      return NextResponse.json({ success: true, text: resultText });
+    } catch (err: any) {
+      console.warn(
+        "First attempt to call Gemini/chat failed:",
+        err?.message ?? err
+      );
 
-    // run the chat/orchestration. context currently supports userId.
-    const resultText = await client.chat(message, {
-      userId: user_id,
-      productId: product_id,
-    });
+      const errMsg = String(err?.message ?? err).toLowerCase();
+      const isMcpConnectionClosed =
+        errMsg.includes("connection closed") ||
+        errMsg.includes("mcp error") ||
+        errMsg.includes("-32000");
 
-    return NextResponse.json({ success: true, text: resultText });
+      if (!isMcpConnectionClosed) {
+        // Non-MCP error: surface it to client
+        throw err;
+      }
+
+      // Reset client and retry once
+      console.warn(
+        "MCP connection closed detected — reconnecting and retrying once"
+      );
+      singletonClient = null;
+      connectPromise = null;
+
+      try {
+        client = await getClient();
+        const retryText = await client.chat(message, {
+          userId: user_id,
+          productId: product_id,
+        });
+        return NextResponse.json({ success: true, text: retryText });
+      } catch (retryErr: any) {
+        console.error("Retry after MCP reconnect failed:", retryErr);
+        return NextResponse.json(
+          {
+            success: false,
+            error: `MCP error -32000: Connection closed (retry failed): ${
+              retryErr?.message ?? String(retryErr)
+            }`,
+          },
+          { status: 500 }
+        );
+      }
+    }
   } catch (err: any) {
     console.error("gemini-chat route error:", err);
     return NextResponse.json(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -22,177 +22,122 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { axiosClient } from "@/lib/axiosClient";
 
+// Product shape returned by your backend (adjusted to match provided object)
 interface Product {
   id: string;
+  company_id?: string;
   name: string;
-  description: string;
-  category: string;
-  price: number;
-  originalPrice?: number;
-  rating: number;
-  reviews: number;
-  inStock: boolean;
-  stockQuantity: number;
-  tags: string[];
-  features: string[];
-  specifications: Record<string, string>;
-  images: string[];
-  status: "active" | "draft" | "archived";
-  lastModified: string;
+  description?: string;
+  category?: string;
+  price?: number;
+  expiration_date?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  image?: { id: string; url: string; file_name?: string } | null;
+  manufacturing_report?: { id: string; url: string; file_name?: string } | null;
+  sales_report?: { id: string; url: string; file_name?: string } | null;
+  status?: "active" | "draft" | "archived";
+  inStock?: boolean;
+  tags?: string[];
+  features?: string[];
+  specifications?: Record<string, string>;
+  [key: string]: any;
 }
 
-const products: Product[] = [
+// keep a small fallback
+const initialProducts: Product[] = [
   {
     id: "wireless-headphones",
     name: "Premium Wireless Headphones",
-    description:
-      "High-quality wireless headphones with noise cancellation and premium sound quality.",
-    category: "Electronics",
+    description: "High-quality wireless headphones.",
     price: 299.99,
-    rating: 4.8,
-    reviews: 1247,
+    status: "active",
     inStock: true,
-    stockQuantity: 45,
-    tags: ["wireless", "noise-cancelling", "premium"],
-    features: [
-      "Active Noise Cancellation",
-      "30-hour battery life",
-      "Premium sound quality",
-      "Comfortable fit",
-      "Quick charge (15 min = 3 hours)",
-    ],
-    specifications: {
-      "Driver Size": "40mm",
-      "Frequency Response": "20Hz - 20kHz",
-      Impedance: "32Ω",
-      Weight: "250g",
-      Connectivity: "Bluetooth 5.0",
+    image: {
+      id: "placeholder",
+      url: "/api/placeholder/400/400",
+      file_name: "placeholder.png",
     },
-    images: ["/api/placeholder/400/400"],
-    status: "active",
-    lastModified: "2025-11-06",
-  },
-  {
-    id: "smart-watch",
-    name: "Executive Smart Watch Pro",
-    description:
-      "Advanced smartwatch with health monitoring, GPS tracking, and professional features for business executives.",
-    category: "Wearables",
-    price: 399.99,
-    rating: 4.6,
-    reviews: 892,
-    inStock: true,
-    stockQuantity: 23,
-    tags: ["smartwatch", "health", "gps", "executive", "business"],
-    features: [
-      "Advanced Health & Fitness Tracking",
-      "GPS + Cellular Connectivity",
-      "7-Day Battery Life",
-      "Titanium Build Quality",
-      "Executive Email Integration",
-    ],
-    specifications: {
-      Display: '1.4" AMOLED Always-On',
-      "Battery Life": "7 days (GPS), 21 days (Time-only)",
-      "Water Resistance": "50m",
-      Sensors: "Heart Rate, GPS, ECG, SpO2",
-      Compatibility: "iOS 14+, Android 8+",
-      Materials: "Titanium case, Ceramic bezel",
-    },
-    images: ["/api/placeholder/400/400"],
-    status: "active",
-    lastModified: "2025-11-05",
-  },
-  {
-    id: "organic-coffee",
-    name: "Single-Origin Ethiopian Coffee",
-    description:
-      "Premium single-origin coffee beans sourced directly from Ethiopian cooperatives, ethically traded and sustainably grown.",
-    category: "Food & Beverage",
-    price: 24.99,
-    rating: 4.9,
-    reviews: 567,
-    inStock: false,
-    stockQuantity: 0,
-    tags: ["organic", "single-origin", "ethiopian", "fair-trade", "premium"],
-    features: [
-      "Single-Origin Ethiopian Yirgacheffe",
-      "Organic Certified",
-      "Fair Trade Certified",
-      "Medium Roast Profile",
-      "Rich Floral and Citrus Notes",
-    ],
-    specifications: {
-      Origin: "Yirgacheffe, Ethiopia",
-      Altitude: "2000m",
-      Process: "Washed",
-      "Roast Level": "Medium",
-      Weight: "1kg (2.2lbs)",
-      "Best By": "24 months from roast date",
-    },
-    images: ["/api/placeholder/400/400"],
-    status: "active",
-    lastModified: "2025-11-04",
-  },
-  {
-    id: "yoga-mat",
-    name: "Eco-Friendly Yoga Mat",
-    description:
-      "Sustainable yoga mat made from natural rubber with excellent grip and comfort.",
-    category: "Sports & Fitness",
-    price: 79.99,
-    rating: 4.7,
-    reviews: 423,
-    inStock: true,
-    stockQuantity: 67,
-    tags: ["eco-friendly", "yoga", "sustainable"],
-    features: [
-      "Natural rubber material",
-      "Excellent grip",
-      "6mm thickness",
-      "Eco-friendly",
-      "Non-slip surface",
-    ],
-    specifications: {
-      Material: "Natural Rubber",
-      Thickness: "6mm",
-      Size: "183cm x 61cm",
-      Weight: "2.5kg",
-      Care: "Wipe with damp cloth",
-    },
-    images: ["/api/placeholder/400/400"],
-    status: "active",
-    lastModified: "2025-11-03",
   },
 ];
 
 export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+
+  // fetch products from backend and populate select
+  useEffect(() => {
+    let mounted = true;
+    async function fetchProducts() {
+      setLoadingProducts(true);
+      try {
+        const resp = await axiosClient.get("/company/getProducts");
+        const data = resp?.data;
+        // adapt depending on API shape: { products: [...] } or [...]
+        const rawList: any[] =
+          data && (data.products ?? data) ? data.products ?? data : [];
+        // Map backend structure (the sample you pasted) directly to Product
+        const fetched: Product[] =
+          Array.isArray(rawList) && rawList.length > 0
+            ? rawList.map((p: any) => ({
+                id: p.id,
+                company_id: p.company_id ?? p.company_id,
+                name: p.name,
+                description: p.description ?? p.description,
+                category: p.category ?? p.category,
+                price: p.price ?? p.price,
+                expiration_date: p.expiration_date ?? p.expiration_date,
+                created_at: p.created_at,
+                updated_at: p.updated_at ?? p.updated_at,
+                image: p.image ?? null,
+                manufacturing_report: p.manufacturing_report ?? null,
+                sales_report: p.sales_report ?? null,
+                status: p.status ?? "active",
+                inStock: p.inStock ?? true,
+                tags: p.tags ?? [],
+                features: p.features ?? [],
+                specifications: p.specifications ?? {},
+              }))
+            : initialProducts;
+        if (mounted) {
+          setProducts(fetched);
+          // auto-select first product if none selected
+          if (!selectedProduct && fetched.length > 0)
+            setSelectedProduct(fetched[0]);
+        }
+      } catch (err) {
+        console.warn("Failed to load products from API, using fallback", err);
+        // keep initialProducts as fallback
+      } finally {
+        if (mounted) setLoadingProducts(false);
+      }
+    }
+    fetchProducts();
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleProductSelect = (productId: string) => {
-    const product = products.find((p) => p.id === productId);
-    setSelectedProduct(product || null);
-    setPrompt(""); // Reset prompt when changing products
+    const product = products.find((p) => p.id === productId) || null;
+    setSelectedProduct(product);
+    setPrompt("");
   };
 
   const handleSubmit = async () => {
     if (!selectedProduct || !prompt.trim()) return;
-
     setIsSubmitting(true);
-
     try {
-      // call backend gemini-chat route with productId + prompt
       const payload = {
         message: prompt,
-        userId: undefined, // optionally set a user id here
+        userId: undefined,
         productId: selectedProduct.id,
       };
-
       const resp = await axiosClient.post("/gemini-chat", payload);
-
-      // resp.data should contain { success, text } per the route implementation
       if (resp?.data?.success) {
         console.log("Gemini response:", resp.data.text);
         alert(
@@ -202,8 +147,6 @@ export default function ProductsPage() {
         console.error("Gemini error:", resp?.data);
         alert(`AI request failed: ${resp?.data?.error || "unknown error"}`);
       }
-
-      // Reset form
       setPrompt("");
     } catch (error: any) {
       console.error("Error submitting prompt:", error);
@@ -249,9 +192,18 @@ export default function ProductsPage() {
                   <Label className="text-sm font-medium text-foreground">
                     Choose Product
                   </Label>
-                  <Select onValueChange={handleProductSelect}>
+                  <Select
+                    onValueChange={handleProductSelect}
+                    value={selectedProduct?.id ?? ""}
+                  >
                     <SelectTrigger className="w-full h-12 bg-white border border-gray-200 hover:bg-gray-50 focus:ring-2 focus:ring-primary/20">
-                      <SelectValue placeholder="Select a product to manage..." />
+                      <SelectValue
+                        placeholder={
+                          loadingProducts
+                            ? "Loading products..."
+                            : "Select a product to manage..."
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent className="bg-white border border-gray-200">
                       {products.map((product) => (
@@ -262,27 +214,33 @@ export default function ProductsPage() {
                         >
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center space-x-3">
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  product.status === "active"
-                                    ? "bg-green-500"
-                                    : product.status === "draft"
-                                    ? "bg-yellow-500"
-                                    : "bg-gray-500"
-                                }`}
-                              />
+                              {/* small thumbnail if available */}
+                              <div className="w-10 h-10 rounded-md overflow-hidden bg-muted">
+                                {product.image?.url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={product.image.url}
+                                    alt={
+                                      product.image.file_name ?? product.name
+                                    }
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300" />
+                                )}
+                              </div>
                               <div>
                                 <div className="font-medium">
                                   {product.name}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {product.category}
+                                  {product.category ?? product.company_id}
                                 </div>
                               </div>
                             </div>
-                            {!product.inStock && (
-                              <Badge variant="destructive" className="text-xs">
-                                Out
+                            {product.status !== "active" && (
+                              <Badge variant="secondary" className="text-xs">
+                                {product.status}
                               </Badge>
                             )}
                           </div>
@@ -320,7 +278,7 @@ export default function ProductsPage() {
           {/* Product Details and Prompt Section */}
           <div className="lg:col-span-2 order-1 lg:order-2 space-y-6 lg:space-y-8">
             {/* Product Details */}
-            {selectedProduct && (
+            {selectedProduct ? (
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
                 <CardHeader className="pb-6">
                   <div className="flex items-start justify-between">
@@ -331,6 +289,13 @@ export default function ProductsPage() {
                       <CardDescription className="text-base leading-relaxed">
                         {selectedProduct.description}
                       </CardDescription>
+                      <div className="mt-3 text-sm text-muted-foreground">
+                        Expires: {selectedProduct.expiration_date ?? "N/A"} •
+                        Updated:{" "}
+                        {selectedProduct.updated_at ??
+                          selectedProduct.created_at ??
+                          "N/A"}
+                      </div>
                     </div>
                     <div className="flex items-center space-x-3 ml-4">
                       <Badge
@@ -349,29 +314,78 @@ export default function ProductsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6 lg:space-y-8">
-                  {/* Price and Rating */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 lg:p-6 bg-linear-to-r from-primary/5 to-primary/10 rounded-lg gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-6">
-                      <div className="flex items-center">
-                        <div className="w-6 h-6 mr-2 bg-linear-to-br from-green-500 to-emerald-500 rounded-full"></div>
-                        <div>
-                          <div className="text-2xl lg:text-3xl font-bold text-green-600">
-                            ${selectedProduct.price}
+                  {/* Image + Reports */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="col-span-1">
+                      <div className="w-full h-64 bg-muted rounded-lg overflow-hidden flex items-center justify-center">
+                        {selectedProduct.image?.url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={selectedProduct.image.url}
+                            alt={
+                              selectedProduct.image.file_name ??
+                              selectedProduct.name
+                            }
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            No Image
                           </div>
-                          <div className="text-xs lg:text-sm text-muted-foreground">
-                            Current Price
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-span-2 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="p-4 bg-muted/30 rounded-lg">
+                          <div className="text-sm font-medium mb-2">
+                            Manufacturing Report
                           </div>
+                          {selectedProduct.manufacturing_report?.url ? (
+                            <a
+                              href={selectedProduct.manufacturing_report.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-primary underline"
+                            >
+                              {selectedProduct.manufacturing_report.file_name ??
+                                "Open report"}
+                            </a>
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              Not available
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-4 bg-muted/30 rounded-lg">
+                          <div className="text-sm font-medium mb-2">
+                            Sales Report
+                          </div>
+                          {selectedProduct.sales_report?.url ? (
+                            <a
+                              href={selectedProduct.sales_report.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-primary underline"
+                            >
+                              {selectedProduct.sales_report.file_name ??
+                                "Open report"}
+                            </a>
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              Not available
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center">
-                        <div className="w-5 h-5 mr-2 bg-linear-to-br from-yellow-400 to-orange-500 rounded-full"></div>
-                        <div>
-                          <div className="text-lg lg:text-xl font-semibold">
-                            {selectedProduct.rating}
-                          </div>
-                          <div className="text-xs lg:text-sm text-muted-foreground">
-                            {selectedProduct.reviews} reviews
-                          </div>
+
+                      <div className="p-4 bg-muted/20 rounded-lg">
+                        <div className="text-sm font-medium mb-1">Metadata</div>
+                        <div className="text-xs text-muted-foreground">
+                          Company: {selectedProduct.company_id ?? "—"} • ID:{" "}
+                          {selectedProduct.id}
                         </div>
                       </div>
                     </div>
@@ -393,10 +407,10 @@ export default function ProductsPage() {
                         Specs
                       </TabsTrigger>
                       <TabsTrigger
-                        value="images"
+                        value="files"
                         className="text-xs lg:text-sm py-2"
                       >
-                        Images
+                        Files
                       </TabsTrigger>
                       <TabsTrigger
                         value="modify"
@@ -410,42 +424,55 @@ export default function ProductsPage() {
                       value="overview"
                       className="space-y-4 lg:space-y-6 mt-4 lg:mt-6"
                     >
-                      {/* Tags */}
+                      {/* Tags & Features */}
                       <div>
                         <Label className="text-sm font-medium text-foreground mb-3 block">
                           Tags
                         </Label>
                         <div className="flex flex-wrap gap-2">
-                          {selectedProduct.tags.map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="secondary"
-                              className="px-3 py-1"
-                            >
-                              <div className="w-2 h-2 mr-1 bg-primary rounded-full"></div>
-                              {tag}
-                            </Badge>
-                          ))}
+                          {(selectedProduct.tags ?? []).length > 0 ? (
+                            (selectedProduct.tags ?? []).map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="secondary"
+                                className="px-3 py-1"
+                              >
+                                <div className="w-2 h-2 mr-1 bg-primary rounded-full"></div>
+                                {tag}
+                              </Badge>
+                            ))
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              No tags
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      {/* Features */}
                       <div>
                         <Label className="text-sm font-medium text-foreground mb-3 block">
                           Key Features
                         </Label>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                          {selectedProduct.features.map((feature, index) => (
-                            <div
-                              key={index}
-                              className="flex items-start p-3 bg-muted/30 rounded-lg"
-                            >
-                              <div className="w-5 h-5 mr-3 mt-0.5 shrink-0 bg-linear-to-br from-green-500 to-emerald-500 rounded-full"></div>
-                              <span className="text-sm leading-relaxed">
-                                {feature}
-                              </span>
+                          {(selectedProduct.features ?? []).length > 0 ? (
+                            (selectedProduct.features ?? []).map(
+                              (feature: string, index: number) => (
+                                <div
+                                  key={index}
+                                  className="flex items-start p-3 bg-muted/30 rounded-lg"
+                                >
+                                  <div className="w-5 h-5 mr-3 mt-0.5 shrink-0 bg-linear-to-br from-green-500 to-emerald-500 rounded-full"></div>
+                                  <span className="text-sm leading-relaxed">
+                                    {feature}
+                                  </span>
+                                </div>
+                              )
+                            )
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              No features listed
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     </TabsContent>
@@ -455,8 +482,11 @@ export default function ProductsPage() {
                       className="space-y-4 mt-4 lg:mt-6"
                     >
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
-                        {Object.entries(selectedProduct.specifications).map(
-                          ([key, value]) => (
+                        {Object.entries(selectedProduct.specifications ?? {})
+                          .length > 0 ? (
+                          Object.entries(
+                            selectedProduct.specifications ?? {}
+                          ).map(([key, value]) => (
                             <div
                               key={key}
                               className="flex justify-between items-center p-3 lg:p-4 bg-muted/30 rounded-lg"
@@ -468,25 +498,57 @@ export default function ProductsPage() {
                                 {value}
                               </span>
                             </div>
-                          )
+                          ))
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            No specifications
+                          </div>
                         )}
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="images" className="mt-4 lg:mt-6">
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 lg:gap-4">
-                        {selectedProduct.images.map((image, index) => (
-                          <div
-                            key={index}
-                            className="aspect-square bg-muted/30 rounded-lg flex items-center justify-center"
-                          >
-                            <div className="w-8 h-8 bg-linear-to-br from-blue-500 to-purple-500 rounded-xl"></div>
+                    <TabsContent value="files" className="mt-4 lg:mt-6">
+                      <div className="space-y-3">
+                        <div className="p-4 bg-muted/30 rounded-lg">
+                          <div className="text-sm font-medium mb-2">
+                            Manufacturing Report
                           </div>
-                        ))}
+                          {selectedProduct.manufacturing_report?.url ? (
+                            <a
+                              href={selectedProduct.manufacturing_report.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-primary underline"
+                            >
+                              {selectedProduct.manufacturing_report.file_name}
+                            </a>
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              Not available
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-4 bg-muted/30 rounded-lg">
+                          <div className="text-sm font-medium mb-2">
+                            Sales Report
+                          </div>
+                          {selectedProduct.sales_report?.url ? (
+                            <a
+                              href={selectedProduct.sales_report.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-primary underline"
+                            >
+                              {selectedProduct.sales_report.file_name}
+                            </a>
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              Not available
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-4 text-center">
-                        Image gallery will be displayed here
-                      </p>
                     </TabsContent>
 
                     <TabsContent value="modify" className="mt-4 lg:mt-6">
@@ -508,7 +570,7 @@ export default function ProductsPage() {
                             </Label>
                             <Textarea
                               id="modify-prompt"
-                              placeholder={`Example: "Increase the price by 10% and add 'eco-friendly' to the tags" or "Update the description to highlight the wireless feature"`}
+                              placeholder={`Example: "Increase the price by 10% and add 'eco-friendly' to the tags"`}
                               value={prompt}
                               onChange={(e) => setPrompt(e.target.value)}
                               className="min-h-20 lg:min-h-24 resize-none"
@@ -538,10 +600,7 @@ export default function ProductsPage() {
                   </Tabs>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Empty State */}
-            {!selectedProduct && (
+            ) : (
               <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-sm">
                 <CardContent className="flex flex-col items-center justify-center py-12 lg:py-16 px-4">
                   <div className="w-16 h-16 bg-linear-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
