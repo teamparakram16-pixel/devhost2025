@@ -39,6 +39,8 @@ export async function POST(req: Request) {
       );
     }
 
+    console.log(`gemini-chat route: user_id=${user_id} product_id=${product_id} message=${message.substring(0, 50)}...`);
+
     // Attempt chat, retry once if MCP connection was closed
     let client = await getClient();
     try {

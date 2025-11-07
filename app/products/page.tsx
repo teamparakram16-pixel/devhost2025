@@ -135,8 +135,12 @@ export default function ProductsPage() {
       const payload = {
         message: prompt,
         userId: undefined,
-        productId: selectedProduct.id,
+        product_id: selectedProduct.id,
       };
+
+      console.log("Selected Product:", selectedProduct);
+
+      console.log("Submitting prompt to Gemini:", payload);
       const resp = await axiosClient.post("/gemini-chat", payload);
       if (resp?.data?.success) {
         console.log("Gemini response:", resp.data.text);
