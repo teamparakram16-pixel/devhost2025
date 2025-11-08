@@ -1,3 +1,4 @@
+/* eslint-disable react/style-prop-object */
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -342,6 +343,7 @@ export default function Home() {
                setProductIdInput(e.target.value); // keep existing logic happy
              }}
              className="text-sm border rounded px-3 py-1 bg-white"
+             aria-label="Select product"
            >
              {products.length === 0 && <option value="">Select product...</option>}
              {products.map((p) => (

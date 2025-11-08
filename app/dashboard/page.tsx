@@ -1,3 +1,4 @@
+/* eslint-disable react/style-prop-object */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -184,6 +185,46 @@ export default function DashboardPage() {
       color: "text-teal-600",
       bgColor: "bg-teal-50"
     }
+  ];
+
+  // Financial breakdown data
+  const costBreakdownData = [
+    { name: 'Revenue', value: 1247563, color: '#10B981' },
+    { name: 'COGS', value: 623781, color: '#EF4444' },
+    { name: 'Manufacturing', value: 187134, color: '#F59E0B' },
+    { name: 'Import/Export', value: 124756, color: '#8B5CF6' },
+    { name: 'Marketing', value: 74853, color: '#06B6D4' },
+    { name: 'Taxes', value: 62378, color: '#EC4899' },
+    { name: 'Net Profit', value: 187134, color: '#84CC16' }
+  ];
+
+  const profitWaterfallData = [
+    { name: 'Revenue', value: 1247563, type: 'revenue' },
+    { name: 'COGS', value: -623781, type: 'cost' },
+    { name: 'Gross Profit', value: 623782, type: 'profit' },
+    { name: 'Operating Costs', value: -249513, type: 'cost' },
+    { name: 'Operating Profit', value: 374269, type: 'profit' },
+    { name: 'Taxes', value: -62378, type: 'cost' },
+    { name: 'Net Profit', value: 311891, type: 'profit' }
+  ];
+
+  const monthlyCostsData = [
+    { month: 'Jan', revenue: 52000, cogs: 26000, manufacturing: 7800, marketing: 5200, taxes: 2600 },
+    { month: 'Feb', revenue: 61000, cogs: 30500, manufacturing: 9150, marketing: 6100, taxes: 3050 },
+    { month: 'Mar', revenue: 56000, cogs: 28000, manufacturing: 8400, marketing: 5600, taxes: 2800 },
+    { month: 'Apr', revenue: 72000, cogs: 36000, manufacturing: 10800, marketing: 7200, taxes: 3600 },
+    { month: 'May', revenue: 65000, cogs: 32500, manufacturing: 9750, marketing: 6500, taxes: 3250 },
+    { month: 'Jun', revenue: 79000, cogs: 39500, manufacturing: 11850, marketing: 7900, taxes: 3950 }
+  ];
+
+  const costCategoriesData = [
+    { category: 'Cost of Goods Sold', amount: 623781, percentage: 50, color: '#EF4444' },
+    { category: 'Manufacturing', amount: 187134, percentage: 15, color: '#F59E0B' },
+    { category: 'Import/Export', amount: 124756, percentage: 10, color: '#8B5CF6' },
+    { category: 'Marketing & Sales', amount: 74853, percentage: 6, color: '#06B6D4' },
+    { category: 'Taxes & Duties', amount: 62378, percentage: 5, color: '#EC4899' },
+    { category: 'Other Expenses', amount: 62378, percentage: 5, color: '#6B7280' },
+    { category: 'Net Profit', amount: 311891, percentage: 25, color: '#10B981' }
   ];
 
   const recentActivity = [
@@ -384,6 +425,202 @@ export default function DashboardPage() {
                   <Legend />
                 </RechartsPieChart>
               </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Financial Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Cost Breakdown Pie Chart */}
+          <Card className="border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center">
+                <PieChart className="w-5 h-5 mr-2 text-red-600" />
+                Cost Breakdown
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Revenue vs cost distribution analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={costBreakdownData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {costBreakdownData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => [`$${value.toLocaleString()}`, 'Amount']}
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Profit Waterfall Chart */}
+          <Card className="border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center">
+                <BarChart3 className="w-5 h-5 mr-2 text-green-600" />
+                Profit Waterfall
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Journey from revenue to net profit
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={profitWaterfallData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="name" stroke="#6B7280" angle={-45} textAnchor="end" height={80} />
+                  <YAxis stroke="#6B7280" />
+                  <Tooltip
+                    formatter={(value) => {
+                      const numValue = typeof value === 'number' ? value : parseFloat(value as string) || 0;
+                      return [`$${Math.abs(numValue).toLocaleString()}`, numValue < 0 ? 'Cost' : 'Profit'];
+                    }}
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[2, 2, 0, 0]}>
+                    {profitWaterfallData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.type === 'revenue' ? '#10B981' : entry.type === 'cost' ? '#EF4444' : '#84CC16'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Additional Financial Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Monthly Cost Trends */}
+          <Card className="border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
+                Monthly Cost Analysis
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Cost breakdown trends over time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={monthlyCostsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="month" stroke="#6B7280" />
+                  <YAxis stroke="#6B7280" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stackId="1"
+                    stroke="#10B981"
+                    fill="#10B981"
+                    fillOpacity={0.6}
+                    name="Revenue"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="cogs"
+                    stackId="2"
+                    stroke="#EF4444"
+                    fill="#EF4444"
+                    fillOpacity={0.6}
+                    name="COGS"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="manufacturing"
+                    stackId="2"
+                    stroke="#F59E0B"
+                    fill="#F59E0B"
+                    fillOpacity={0.6}
+                    name="Manufacturing"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="marketing"
+                    stackId="2"
+                    stroke="#8B5CF6"
+                    fill="#8B5CF6"
+                    fillOpacity={0.6}
+                    name="Marketing"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Cost Categories Breakdown */}
+          <Card className="border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center">
+                <Target className="w-5 h-5 mr-2 text-purple-600" />
+                Cost Categories
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Detailed expense breakdown by category
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {costCategoriesData.map((category, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className="w-4 h-4 rounded"
+                        style={{ backgroundColor: category.color }} // eslint-disable-line react/style-prop-object
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{category.category}</p>
+                        <p className="text-xs text-gray-500">{category.percentage}% of total</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">
+                        ${category.amount.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700">Net Profit Margin</span>
+                  <span className="text-lg font-bold text-green-600">25.0%</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
