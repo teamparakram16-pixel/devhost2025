@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RetailAI - AI-Driven Retail Demand Forecasting & Dynamic Pricing",
+  title: "RetailAI",
   description: "Optimize inventory, predict demand, and maximize margins with AI-powered retail solutions for Nordic retailers.",
 };
 

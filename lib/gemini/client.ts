@@ -73,7 +73,7 @@ Always follow tool input/output schemas and avoid fetching or summarizing detail
         ListToolsResultSchema
       );
 
-      const tools = responseData.tools || [];
+      const tools = (responseData as any).tools || [];
 
       console.log("🛠️ Available tools:", JSON.stringify(tools, null, 2));
 
