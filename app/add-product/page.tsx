@@ -62,7 +62,6 @@ const onSubmit = async (data: ProductForm) => {
     });
 
     console.log("✅ Product created:", res.data);
-    router.push('/products')
   } catch (err: any) {
     console.error("❌ Error:", err);
   } finally {
